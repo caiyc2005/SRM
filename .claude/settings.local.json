@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet build *)",
+      "Bash(dotnet ef *)",
+      "Bash(dotnet tool *)",
+      "Bash(dotnet add *)",
+      "Bash(/d/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/sqlcmd *)"
+    ]
+  }
+}

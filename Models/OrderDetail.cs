@@ -1,0 +1,34 @@
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace WebApplication1.Models
+{
+    [Table("OrderDetail")]
+    public class OrderDetail
+    {
+        [Key]
+        [StringLength(50)]
+        public string OrderDetailID { get; set; }
+
+        [StringLength(50)]
+        [Required]
+        public string OrderID { get; set; }
+
+        [StringLength(50)]
+        [Required]
+        public string MaterialCode { get; set; }
+
+        [Required]
+        public int QTY { get; set; }
+
+        [Column(TypeName = "decimal(18,6)")]
+        public decimal? UnitPrice { get; set; }
+
+        [Column(TypeName = "decimal(18,6)")]
+        public decimal? Amount { get; set; }
+
+        // 外键关联：多个明细属于一个采购订单
+        [ForeignKey(nameof(OrderID))]
+        public virtual PurchaseOrder PurchaseOrder { get; set; }
+    }
+}
