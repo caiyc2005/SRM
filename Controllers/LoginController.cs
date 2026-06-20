@@ -1,11 +1,11 @@
+using backend.Models;
+using backend.Models.Dto;
+using backend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using WebApplication1.Models;
-using WebApplication1.Models.Dto;
-using WebApplication1.Services;
 
-namespace WebApplication1.Controllers
+namespace backend.Controllers
 {
     [Route("api/[controller]/[action]")]
     [ApiController]

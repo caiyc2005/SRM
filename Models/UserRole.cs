@@ -2,7 +2,7 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Data;
 
-namespace WebApplication1.Models
+namespace backend.Models
 {
     [Table("UserRole")]
     public class UserRole
