@@ -3,7 +3,7 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
 
-namespace WebApplication1.Services
+namespace backend.Services
 {
     public interface IJwtService
     {

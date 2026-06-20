@@ -1,4 +1,4 @@
-namespace WebApplication1.Models.Dto
+namespace backend.Models.Dto
 {
     // ========== 用户相关 DTO ==========
     public class IdRequest

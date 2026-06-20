@@ -1,12 +1,12 @@
 using System.Text;
+using backend.Models;
+using backend.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using WebApplication1.Models;
-using WebApplication1.Services;
 
-namespace WebApplication1
+namespace backend
 {
     public class Program
     {
