@@ -80,7 +80,7 @@ namespace backend.Controllers
 
             return Ok(ApiResult.Ok("用户添加成功", new UserResponse
             {
-                ID = user.UserID,
+                UserID = user.UserID,
                 UserCode = user.UserCode,
                 UserName = user.UserName,
                 IsDel = user.IsDel,
@@ -126,7 +126,7 @@ namespace backend.Controllers
 
             return Ok(ApiResult.Ok("用户修改成功", new UserResponse
             {
-                ID = user.UserID,
+                UserID = user.UserID,
                 UserCode = user.UserCode,
                 UserName = user.UserName,
                 IsDel = user.IsDel,
@@ -143,7 +143,7 @@ namespace backend.Controllers
                 //.Where(u => !u.IsDel)
                 .Select(u => new UserResponse
                 {
-                    ID = u.UserID,
+                    UserID = u.UserID,
                     UserCode = u.UserCode,
                     UserName = u.UserName,
                     IsDel = u.IsDel,
@@ -265,7 +265,7 @@ namespace backend.Controllers
             var userRoles = await _context.UserRoles
                 .Select(ur => new UserRoleResponse
                 {
-                    ID = ur.UserRoleID,
+                    UserRoleID = ur.UserRoleID,
                     UserID = ur.UserID,
                     RoleID = ur.RoleID
                 })

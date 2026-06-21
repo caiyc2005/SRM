@@ -49,6 +49,20 @@ namespace backend.Controllers
                 });
             }
 
+            // 在查询前打印，看看到底传了什么
+            Console.WriteLine($"传入的 UserCode: '{request.UserCode}'");
+            Console.WriteLine($"长度: {request.UserCode.Length}");
+
+            // 看看数据库里有什么
+            var allUsers = await _context.Users
+                .Select(u => new { u.UserCode, u.UserName })
+                .ToListAsync();
+
+            foreach (var u in allUsers)
+            {
+                Console.WriteLine($"数据库 UserCode: '{u.UserCode}'");
+            }
+
             // 查找用户（包含角色导航）
             var user = await _context.Users
                 .Include(u => u.UserRoles)
@@ -60,7 +74,7 @@ namespace backend.Controllers
                 return Unauthorized(new LoginResponse
                 {
                     Success = false,
-                    Message = "账号或密码错误"
+                    Message = "账号或密码错误1"
                 });
             }
 
@@ -75,7 +89,7 @@ namespace backend.Controllers
                 return Ok(new LoginResponse
                 {
                     Success = false,
-                    Message = "账号或密码错误",
+                    Message = "账号或密码错误2",
                 });
             }
 
@@ -100,7 +114,7 @@ namespace backend.Controllers
                 Token = token,
                 User = new UserInfo
                 {
-                    ID = user.UserID,
+                    UserID = user.UserID,
                     UserCode = user.UserCode,
                     UserName = user.UserName,
                     Roles = roleNames
