@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace backend.Models
@@ -16,38 +16,49 @@ namespace backend.Models
 
         [StringLength(50)]
         [Required]
-        public string OrderId { get; set; }
+        public string OrderID { get; set; }
 
         [StringLength(50)]
         [Required]
-        public string SupplierId { get; set; }
+        public string SupplierID { get; set; }
+
+        [StringLength(50)]
+        [Required]
+        public string SupplierName { get; set; }
 
         [Required]
         public bool Status { get; set; }
 
-        [Column(TypeName = "date")]
         public DateTime? ExpectedDate { get; set; }
 
-        [Column(TypeName = "date")]
         public DateTime? DeliveryDate { get; set; }
 
         [StringLength(50)]
-        public string? CreateBy { get; set; }
+        [Required]
+        public string CreateByID { get; set; }
 
-        public DateTime? CreateTime { get; set; }
+        [StringLength(50)]
+        [Required]
+        public string CreateByName { get; set; }
 
-        public DateTime? UpdateTime { get; set; }
+        public DateTime CreatedTime { get; set; }
+
+        public DateTime? UpdatedTime { get; set; }
 
         [Required]
         public bool IsDel { get; set; }
 
         // 外键关联：一个送货单属于一个采购订单
-        [ForeignKey(nameof(OrderId))]
+        [ForeignKey(nameof(OrderID))]
         public virtual PurchaseOrder PurchaseOrder { get; set; }
 
         // 外键关联：一个送货单属于一个供应商
-        [ForeignKey(nameof(SupplierId))]
+        [ForeignKey(nameof(SupplierID))]
         public virtual Supplier Supplier { get; set; }
+
+        // 外键关联：一个送货单由一个用户创建
+        [ForeignKey(nameof(CreateByID))]
+        public virtual User CreateByUser { get; set; }
 
         // 导航属性：一个送货单有多个明细
         public virtual ICollection<DeliveryDetail> DeliveryDetails { get; set; }

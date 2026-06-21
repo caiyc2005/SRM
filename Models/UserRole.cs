@@ -1,6 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Data;
 
 namespace backend.Models
 {
@@ -9,7 +8,7 @@ namespace backend.Models
     {
         [Key]
         [StringLength(50)]
-        public string ID { get; set; }
+        public string UserRoleID { get; set; }
 
         [StringLength(50)]
         [Required]

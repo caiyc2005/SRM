@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace backend.Models
@@ -8,21 +8,21 @@ namespace backend.Models
     {
         [Key]
         [StringLength(50)]
-        public string DetailID { get; set; }
+        public string DeliveryDetailID { get; set; }
 
         [StringLength(50)]
         [Required]
         public string NoteID { get; set; }
 
-        [StringLength(20)]
+        [StringLength(50)]
         [Required]
         public string MaterialCode { get; set; }
 
-        [StringLength(20)]
+        [StringLength(50)]
         [Required]
         public string MaterialName { get; set; }
 
-        [Column(TypeName = "decimal(18,2)")]
+        [Column(TypeName = "decimal(18,4)")]
         [Required]
         public decimal Quantity { get; set; }
 
@@ -30,14 +30,14 @@ namespace backend.Models
         [Required]
         public string Unit { get; set; }
 
-        [Column(TypeName = "decimal(18,2)")]
+        [Column(TypeName = "decimal(18,4)")]
         public decimal? UnitPrice { get; set; }
 
-        [Column(TypeName = "decimal(18,2)")]
+        [Column(TypeName = "decimal(18,4)")]
         [Required]
         public decimal ReceivedQty { get; set; }
 
-        [Column(TypeName = "decimal(18,2)")]
+        [Column(TypeName = "decimal(18,4)")]
         public decimal? Amount { get; set; }
 
         [Required]
