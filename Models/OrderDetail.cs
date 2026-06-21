@@ -19,12 +19,12 @@ namespace backend.Models
         public string MaterialCode { get; set; }
 
         [Required]
-        public int QTY { get; set; }
+        public decimal Qty { get; set; }
 
-        [Column(TypeName = "decimal(18,6)")]
+        [Column(TypeName = "decimal(18,4)")]
         public decimal? UnitPrice { get; set; }
 
-        [Column(TypeName = "decimal(18,6)")]
+        [Column(TypeName = "decimal(18,4)")]
         public decimal? Amount { get; set; }
 
         // 外键关联：多个明细属于一个采购订单

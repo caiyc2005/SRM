@@ -12,15 +12,15 @@ namespace backend.Models
 
         [StringLength(50)]
         [Required]
-        public string ReceiveId { get; set; }
+        public string ReceiveID { get; set; }
 
         [StringLength(50)]
         [Required]
-        public string DeliveryDetailId { get; set; }
+        public string DeliveryDetailID { get; set; }
 
         [StringLength(50)]
         [Required]
-        public string MaterialId { get; set; }
+        public string MaterialID { get; set; }
 
         [StringLength(50)]
         [Required]
@@ -47,15 +47,15 @@ namespace backend.Models
         public bool IsDel { get; set; }
 
         // 外键关联：多个明细属于一个收料记录
-        [ForeignKey(nameof(ReceiveId))]
+        [ForeignKey(nameof(ReceiveID))]
         public virtual ReceiveRecord ReceiveRecord { get; set; }
 
         // 外键关联：多个明细属于一个送货明细
-        [ForeignKey(nameof(DeliveryDetailId))]
+        [ForeignKey(nameof(DeliveryDetailID))]
         public virtual DeliveryDetail DeliveryDetail { get; set; }
 
         // 外键关联：多个明细属于一个物料
-        [ForeignKey(nameof(MaterialId))]
+        [ForeignKey(nameof(MaterialID))]
         public virtual Material Material { get; set; }
     }
 }

@@ -16,13 +16,20 @@ namespace backend.Models
 
         [StringLength(50)]
         [Required]
-        public string SupplierId { get; set; }
+        public string SupplierID { get; set; }
+
+        [StringLength(50)]
+        [Required]
+        public string SupplierName { get; set; }
 
         [Required]
         public int Status { get; set; }
 
         [StringLength(50)]
-        public string CreateBy { get; set; }
+        public string CreateByID { get; set; }
+
+        [StringLength(50)]
+        public string CreateByName { get; set; }
 
         public DateTime? CreateTime { get; set; }
 
@@ -35,7 +42,7 @@ namespace backend.Models
         public string? Memo { get; set; }
 
         // 外键关联：一个采购订单属于一个供应商
-        [ForeignKey(nameof(SupplierId))]
+        [ForeignKey(nameof(SupplierID))]
         public virtual Supplier Supplier { get; set; }
 
         // 导航属性：一个采购订单有多个明细

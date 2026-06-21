@@ -11,7 +11,7 @@ namespace backend.Models
     {
         [Key]
         [StringLength(50)]
-        public string SupplyID { get; set; }
+        public string SupplierID { get; set; }
 
         [StringLength(50)]
         [Required]

@@ -8,7 +8,7 @@ namespace backend.Models
     {
         [Key]
         [StringLength(50)]
-        public string RecordId { get; set; }
+        public string RecordID { get; set; }
 
         [StringLength(50)]
         [Required]
@@ -20,7 +20,7 @@ namespace backend.Models
 
         [StringLength(50)]
         [Required]
-        public string SupplierId { get; set; }
+        public string SupplierID { get; set; }
 
         [StringLength(50)]
         [Required]
@@ -40,7 +40,7 @@ namespace backend.Models
         public virtual DeliveryNote DeliveryNote { get; set; }
 
         // 外键关联：一个收料记录属于一个供应商
-        [ForeignKey(nameof(SupplierId))]
+        [ForeignKey(nameof(SupplierID))]
         public virtual Supplier Supplier { get; set; }
 
         // 导航属性：一个收料记录有多个明细

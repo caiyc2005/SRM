@@ -21,7 +21,7 @@ namespace backend.Models.Dto
     /// </summary>
     public class UserResponse
     {
-        public string ID { get; set; } = string.Empty;
+        public string UserID { get; set; } = string.Empty;
         public string UserCode { get; set; } = string.Empty;
         public string UserName { get; set; } = string.Empty;
         public bool IsDel { get; set; }
@@ -80,7 +80,7 @@ namespace backend.Models.Dto
     // UserRoleResponse
     public class UserRoleResponse
     {
-        public string ID { get; set; }
+        public string UserRoleID { get; set; }
         public string UserID { get; set; }
         public string RoleID { get; set; }
     }

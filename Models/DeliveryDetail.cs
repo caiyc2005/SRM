@@ -30,14 +30,14 @@ namespace backend.Models
         [Required]
         public string Unit { get; set; }
 
-        [Column(TypeName = "decimal(18,2)")]
+        [Column(TypeName = "decimal(18,4)")]
         public decimal? UnitPrice { get; set; }
 
-        [Column(TypeName = "decimal(18,2)")]
+        [Column(TypeName = "decimal(18,4)")]
         [Required]
         public decimal ReceivedQty { get; set; }
 
-        [Column(TypeName = "decimal(18,2)")]
+        [Column(TypeName = "decimal(18,4)")]
         public decimal? Amount { get; set; }
 
         [Required]

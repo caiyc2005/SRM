@@ -16,11 +16,11 @@ namespace backend.Models
 
         [StringLength(50)]
         [Required]
-        public string OrderId { get; set; }
+        public string OrderID { get; set; }
 
         [StringLength(50)]
         [Required]
-        public string SupplierId { get; set; }
+        public string SupplierID { get; set; }
 
         [Required]
         public bool Status { get; set; }
@@ -42,11 +42,11 @@ namespace backend.Models
         public bool IsDel { get; set; }
 
         // 外键关联：一个送货单属于一个采购订单
-        [ForeignKey(nameof(OrderId))]
+        [ForeignKey(nameof(OrderID))]
         public virtual PurchaseOrder PurchaseOrder { get; set; }
 
         // 外键关联：一个送货单属于一个供应商
-        [ForeignKey(nameof(SupplierId))]
+        [ForeignKey(nameof(SupplierID))]
         public virtual Supplier Supplier { get; set; }
 
         // 导航属性：一个送货单有多个明细
