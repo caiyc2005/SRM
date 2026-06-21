@@ -100,102 +100,37 @@ namespace backend.Models
             {
                 entity.ToTable("PurchaseOrder");
                 entity.HasKey(e => e.OrderID);
-
-                entity.HasOne(e => e.Supplier)
-                      .WithMany(s => s.PurchaseOrders)
-                      .HasForeignKey(e => e.SupplierID)
-                      .OnDelete(DeleteBehavior.Restrict);
-
-                entity.HasOne(e => e.CreateByUser)
-                      .WithMany(u => u.CreatedPurchaseOrders)
-                      .HasForeignKey(e => e.CreateByID)
-                      .OnDelete(DeleteBehavior.Restrict);
-
-                entity.HasOne(e => e.UpdateByUser)
-                      .WithMany(u => u.UpdatedPurchaseOrders)
-                      .HasForeignKey(e => e.UpdateByID)
-                      .OnDelete(DeleteBehavior.Restrict);
             });
 
-            // =====================================
             // OrderDetail 配置
-            // =====================================
             modelBuilder.Entity<OrderDetail>(entity =>
             {
                 entity.ToTable("OrderDetail");
                 entity.HasKey(e => e.OrderDetailID);
-
-                entity.HasOne(e => e.PurchaseOrder)
-                      .WithMany(p => p.OrderDetails)
-                      .HasForeignKey(e => e.OrderID)
-                      .OnDelete(DeleteBehavior.Cascade);
             });
 
-            // =====================================
             // DeliveryNote 配置
-            // =====================================
             modelBuilder.Entity<DeliveryNote>(entity =>
             {
                 entity.ToTable("DeliveryNote");
                 entity.HasKey(e => e.NoteID);
-
-                entity.HasOne(e => e.PurchaseOrder)
-                      .WithMany(p => p.DeliveryNotes)
-                      .HasForeignKey(e => e.OrderID)
-                      .OnDelete(DeleteBehavior.Restrict);
-
-                entity.HasOne(e => e.Supplier)
-                      .WithMany(s => s.DeliveryNotes)
-                      .HasForeignKey(e => e.SupplierID)
-                      .OnDelete(DeleteBehavior.Restrict);
-
-                entity.HasOne(e => e.CreateByUser)
-                      .WithMany(u => u.CreatedDeliveryNotes)
-                      .HasForeignKey(e => e.CreateByID)
-                      .OnDelete(DeleteBehavior.Restrict);
             });
 
-            // =====================================
             // DeliveryDetail 配置
-            // =====================================
             modelBuilder.Entity<DeliveryDetail>(entity =>
             {
                 entity.ToTable("DeliveryDetail");
-                entity.HasKey(e => e.DeliveryDetailID);
-
-                entity.HasOne(e => e.DeliveryNote)
-                      .WithMany(d => d.DeliveryDetails)
-                      .HasForeignKey(e => e.NoteID)
-                      .OnDelete(DeleteBehavior.Cascade);
+                entity.HasKey(e => e.DetailID);
             });
 
-            // =====================================
             // ReceiveRecord 配置
-            // =====================================
             modelBuilder.Entity<ReceiveRecord>(entity =>
             {
                 entity.ToTable("ReceiveRecord");
-                entity.HasKey(e => e.ReceiveID);
-
-                entity.HasOne(e => e.DeliveryNote)
-                      .WithMany(d => d.ReceiveRecords)
-                      .HasForeignKey(e => e.NoteID)
-                      .OnDelete(DeleteBehavior.Restrict);
-
-                entity.HasOne(e => e.Supplier)
-                      .WithMany(s => s.ReceiveRecords)
-                      .HasForeignKey(e => e.SupplierID)
-                      .OnDelete(DeleteBehavior.Restrict);
-
-                entity.HasOne(e => e.ReceiveUser)
-                      .WithMany(u => u.ReceiveRecords)
-                      .HasForeignKey(e => e.ReceiveUserID)
-                      .OnDelete(DeleteBehavior.Restrict);
+                entity.HasKey(e => e.RecordID);
             });
 
-            // =====================================
             // ReceiveDetail 配置
-            // =====================================
             modelBuilder.Entity<ReceiveDetail>(entity =>
             {
                 entity.ToTable("ReceiveDetail");

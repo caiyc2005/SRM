@@ -7,6 +7,7 @@ namespace backend.Models
     public class User
     {
         [Key]
+        [Column("UserID")]
         [StringLength(50)]
         public string UserID { get; set; }
 

@@ -25,7 +25,7 @@ namespace backend.Models.Dto
     /// </summary>
     public class UserInfo
     {
-        public string ID { get; set; } = string.Empty;
+        public string UserID { get; set; } = string.Empty;
         public string UserCode { get; set; } = string.Empty;
         public string UserName { get; set; } = string.Empty;
         public List<string> Roles { get; set; } = new();

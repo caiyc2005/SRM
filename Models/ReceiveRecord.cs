@@ -8,6 +8,7 @@ namespace backend.Models
     {
         [Key]
         [StringLength(50)]
+        public string RecordID { get; set; }
         public string ReceiveID { get; set; }
 
         [StringLength(50)]
