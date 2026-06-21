@@ -5,7 +5,13 @@
       "Bash(dotnet ef *)",
       "Bash(dotnet tool *)",
       "Bash(dotnet add *)",
-      "Bash(/d/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/sqlcmd *)"
+      "Bash(/d/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/sqlcmd *)",
+      "Bash(taskkill /f /im backend.exe)",
+      "Bash(netstat -ano)",
+      "Bash(findstr :5251)",
+      "Bash(handle.exe -a \"D:\\\\SRM\\\\backend\\\\bin\\\\Debug\\\\net10.0\\\\backend.exe\")",
+      "Bash(taskkill /f /pid 18512)",
+      "Bash(powershell *)"
     ]
   }
 }

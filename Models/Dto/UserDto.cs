@@ -85,6 +85,14 @@ namespace backend.Models.Dto
         public string RoleID { get; set; }
     }
 
+    public class UpdateRoleStatusRequest
+    {
+        public string RoleId { get; set; }
+        public bool IsDel { get; set; }
+    }
+
+
+
     // ========== 通用响应 ==========
 
     /// <summary>

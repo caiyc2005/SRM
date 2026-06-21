@@ -218,6 +218,24 @@ namespace backend.Controllers
             return Ok(ApiResult.Ok("角色已删除（软删除）"));
         }
 
+        /// <summary>
+        /// 启用角色（将 IsDel 设为 false）
+        /// </summary>
+        //[HttpPut("UpdateRoleStatus")]
+        [HttpPut]
+        public async Task<ActionResult<ApiResult>> UpdateRoleStatus([FromBody] UpdateRoleStatusRequest request)
+        {
+            var role = await _context.Roles.FindAsync(request.RoleId);
+            if (role == null)
+                return NotFound(ApiResult.Fail("角色不存在"));
+
+            role.IsDel = request.IsDel;
+            await _context.SaveChangesAsync();
+
+            return Ok(ApiResult.Ok("操作成功"));
+        }
+
+
         [HttpGet]
         public async Task<ActionResult<ApiResult>> GetRoles()
         {
