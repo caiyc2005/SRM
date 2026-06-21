@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace backend.Models
@@ -29,15 +29,14 @@ namespace backend.Models
         [Required]
         public string PhoneNumber { get; set; }
 
-        [StringLength(50)]
-        [Required]
-        public string Address { get; set; }
+        [StringLength(100)]
+        public string? Address { get; set; }
 
         [Required]
         public bool IsDel { get; set; }
 
         [StringLength(50)]
-        public string Memo { get; set; }
+        public string? Memo { get; set; }
 
         // 导航属性
         public virtual ICollection<PurchaseOrder> PurchaseOrders { get; set; }

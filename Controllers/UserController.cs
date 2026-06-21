@@ -2,7 +2,6 @@ using backend.Models;
 using backend.Models.Dto;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using WebApplication1.Models;
 
 namespace backend.Controllers
 {
@@ -67,7 +66,7 @@ namespace backend.Controllers
 
             var user = new User
             {
-                ID = Guid.NewGuid().ToString(),
+                UserID = Guid.NewGuid().ToString(),
                 UserCode = request.UserCode,
                 UserName = request.UserName,
                 Password = request.Password,
@@ -81,7 +80,7 @@ namespace backend.Controllers
 
             return Ok(ApiResult.Ok("用户添加成功", new UserResponse
             {
-                ID = user.ID,
+                ID = user.UserID,
                 UserCode = user.UserCode,
                 UserName = user.UserName,
                 IsDel = user.IsDel,
@@ -127,7 +126,7 @@ namespace backend.Controllers
 
             return Ok(ApiResult.Ok("用户修改成功", new UserResponse
             {
-                ID = user.ID,
+                ID = user.UserID,
                 UserCode = user.UserCode,
                 UserName = user.UserName,
                 IsDel = user.IsDel,
@@ -144,7 +143,7 @@ namespace backend.Controllers
                 //.Where(u => !u.IsDel)
                 .Select(u => new UserResponse
                 {
-                    ID = u.ID,
+                    ID = u.UserID,
                     UserCode = u.UserCode,
                     UserName = u.UserName,
                     IsDel = u.IsDel,
@@ -266,7 +265,7 @@ namespace backend.Controllers
             var userRoles = await _context.UserRoles
                 .Select(ur => new UserRoleResponse
                 {
-                    ID = ur.ID,
+                    ID = ur.UserRoleID,
                     UserID = ur.UserID,
                     RoleID = ur.RoleID
                 })
@@ -305,7 +304,7 @@ namespace backend.Controllers
 
             var userRole = new UserRole
             {
-                ID = Guid.NewGuid().ToString(),
+                UserRoleID = Guid.NewGuid().ToString(),
                 UserID = request.UserID,
                 RoleID = request.RoleID
             };

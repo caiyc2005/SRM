@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace backend.Models
@@ -39,7 +39,7 @@ namespace backend.Models
         public decimal DiffQty { get; set; }
 
         [StringLength(50)]
-        public string CreateBy { get; set; }
+        public string? CreateBy { get; set; }
 
         public DateTime? CreateTime { get; set; }
 
@@ -57,5 +57,9 @@ namespace backend.Models
         // 外键关联：多个明细属于一个物料
         [ForeignKey(nameof(MaterialID))]
         public virtual Material Material { get; set; }
+
+        // 外键关联：多个明细由一个用户创建
+        [ForeignKey(nameof(CreateBy))]
+        public virtual User CreateByUser { get; set; }
     }
 }

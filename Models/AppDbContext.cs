@@ -1,3 +1,4 @@
+using backend.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace backend.Models
@@ -26,7 +27,9 @@ namespace backend.Models
         {
             base.OnModelCreating(modelBuilder);
 
+            // =====================================
             // User 配置
+            // =====================================
             modelBuilder.Entity<User>(entity =>
             {
                 entity.ToTable("User");
@@ -34,14 +37,18 @@ namespace backend.Models
                 entity.HasIndex(e => e.UserCode).IsUnique();
             });
 
+            // =====================================
             // Role 配置
+            // =====================================
             modelBuilder.Entity<Role>(entity =>
             {
                 entity.ToTable("Role");
                 entity.HasKey(e => e.RoleID);
             });
 
+            // =====================================
             // UserRole 配置
+            // =====================================
             modelBuilder.Entity<UserRole>(entity =>
             {
                 entity.ToTable("UserRole");
@@ -58,28 +65,37 @@ namespace backend.Models
                       .OnDelete(DeleteBehavior.Cascade);
             });
 
+            // =====================================
             // Supplier 配置
+            // =====================================
             modelBuilder.Entity<Supplier>(entity =>
             {
                 entity.ToTable("Supplier");
                 entity.HasKey(e => e.SupplierID);
             });
 
+            // =====================================
             // Material 配置
+            // =====================================
             modelBuilder.Entity<Material>(entity =>
             {
                 entity.ToTable("Material");
                 entity.HasKey(e => e.MaterialID);
             });
 
+            // =====================================
             // Warehouse 配置
+            // =====================================
             modelBuilder.Entity<Warehouse>(entity =>
             {
                 entity.ToTable("Warehouse");
                 entity.HasKey(e => e.WareID);
             });
 
+            // =====================================
             // PurchaseOrder 配置
+            // 注意: 对 User 有两个外键（CreateByID, UpdateByID）
+            // =====================================
             modelBuilder.Entity<PurchaseOrder>(entity =>
             {
                 entity.ToTable("PurchaseOrder");
@@ -119,13 +135,51 @@ namespace backend.Models
             {
                 entity.ToTable("ReceiveDetail");
                 entity.HasKey(e => e.ReceiveDetailID);
+
+                entity.HasOne(e => e.ReceiveRecord)
+                      .WithMany(r => r.ReceiveDetails)
+                      .HasForeignKey(e => e.ReceiveID)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.DeliveryDetail)
+                      .WithMany(d => d.ReceiveDetails)
+                      .HasForeignKey(e => e.DeliveryDetailID)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.Material)
+                      .WithMany(m => m.ReceiveDetails)
+                      .HasForeignKey(e => e.MaterialID)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.CreateByUser)
+                      .WithMany()
+                      .HasForeignKey(e => e.CreateBy)
+                      .OnDelete(DeleteBehavior.SetNull);
             });
 
+            // =====================================
             // Inventory 配置
+            // =====================================
             modelBuilder.Entity<Inventory>(entity =>
             {
                 entity.ToTable("Inventory");
                 entity.HasKey(e => e.InventoryID);
+                entity.HasIndex(e => new { e.WareID, e.MaterialID }).IsUnique();
+
+                entity.HasOne(e => e.Material)
+                      .WithMany(m => m.Inventories)
+                      .HasForeignKey(e => e.MaterialID)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.Warehouse)
+                      .WithMany(w => w.Inventories)
+                      .HasForeignKey(e => e.WareID)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.UpdateByUser)
+                      .WithMany(u => u.UpdatedInventories)
+                      .HasForeignKey(e => e.UpdateByID)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
         }
     }

@@ -87,7 +87,7 @@ namespace backend.Controllers
 
             // 生成 JWT Token
             var token = _jwtService.GenerateToken(
-                userId: user.ID,
+                userId: user.UserID,
                 userName: user.UserName,
                 userCode: user.UserCode,
                 roles: roleNames
@@ -100,7 +100,7 @@ namespace backend.Controllers
                 Token = token,
                 User = new UserInfo
                 {
-                    ID = user.ID,
+                    ID = user.UserID,
                     UserCode = user.UserCode,
                     UserName = user.UserName,
                     Roles = roleNames

@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace backend.Models
@@ -14,9 +14,9 @@ namespace backend.Models
         [Required]
         public string MaterialID { get; set; }
 
-        [StringLength(20)]
+        [StringLength(50)]
         [Required]
-        public string WareID { get; set; }  // 文档中是 WareID
+        public string WareID { get; set; }
 
         [Column(TypeName = "decimal(18,4)")]
         [Required]
@@ -26,9 +26,12 @@ namespace backend.Models
         public DateTime LastReceiveTime { get; set; }
 
         [StringLength(50)]
-        public string UpdateBy { get; set; }
+        [Required]
+        public string UpdateByID { get; set; }
 
-        public DateTime? UpdateTime { get; set; }
+        [StringLength(50)]
+        [Required]
+        public string UpdateByName { get; set; }
 
         // 外键关联：一个库存记录属于一个物料
         [ForeignKey(nameof(MaterialID))]
@@ -37,5 +40,9 @@ namespace backend.Models
         // 外键关联：一个库存记录属于一个仓库
         [ForeignKey(nameof(WareID))]
         public virtual Warehouse Warehouse { get; set; }
+
+        // 外键关联：一个库存记录由一个用户更新
+        [ForeignKey(nameof(UpdateByID))]
+        public virtual User UpdateByUser { get; set; }
     }
 }

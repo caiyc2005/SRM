@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace backend.Models
@@ -18,6 +18,7 @@ namespace backend.Models
         [Required]
         public string MaterialCode { get; set; }
 
+        [Column(TypeName = "decimal(18,4)")]
         [Required]
         public decimal Qty { get; set; }
 
