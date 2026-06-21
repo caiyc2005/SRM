@@ -25,8 +25,6 @@ namespace backend.Models
         [Required]
         public int Status { get; set; }
 
-        [StringLength(50)]
-        public string CreateByID { get; set; }
 
         [StringLength(50)]
         [Required]

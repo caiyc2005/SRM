@@ -94,12 +94,22 @@ namespace backend.Models
 
             // =====================================
             // PurchaseOrder 配置
-            // 注意: 对 User 有两个外键（CreateByID, UpdateByID）
+            // 注意：对 User 有两个外键，必须显式配置
             // =====================================
             modelBuilder.Entity<PurchaseOrder>(entity =>
             {
                 entity.ToTable("PurchaseOrder");
                 entity.HasKey(e => e.OrderID);
+
+                entity.HasOne(e => e.CreateByUser)
+                      .WithMany(u => u.CreatedPurchaseOrders)
+                      .HasForeignKey(e => e.CreateByID)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.UpdateByUser)
+                      .WithMany(u => u.UpdatedPurchaseOrders)
+                      .HasForeignKey(e => e.UpdateByID)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
 
             // OrderDetail 配置
@@ -120,7 +130,7 @@ namespace backend.Models
             modelBuilder.Entity<DeliveryDetail>(entity =>
             {
                 entity.ToTable("DeliveryDetail");
-                entity.HasKey(e => e.DetailID);
+                entity.HasKey(e => e.DeliveryDetailID);
             });
 
             // ReceiveRecord 配置
