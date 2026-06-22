@@ -1,13 +1,13 @@
 ﻿namespace backend.Models.Dto
 {
 
-    public class DeliveryGetDto()
+    public class DeliveryGetDto
     {
-        public string? noteCode;
-        public string? supplierId;
-        public bool? status;
-        public int page = 1;
-        public int pageSize = 10;
+        public string? noteCode { get; set; }
+        public string? supplierId { get; set; }
+        public bool? status { get; set; }
+        public int page { get; set; } = 1;
+        public int pageSize { get; set; } = 10;
     }
     public class DeliveryDto
     {

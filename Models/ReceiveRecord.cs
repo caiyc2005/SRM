@@ -8,8 +8,8 @@ namespace backend.Models
     {
         [Key]
         [StringLength(50)]
-        public string RecordID { get; set; }
-        public string ReceiveID { get; set; }
+        [Required]
+        public string ReceiveID { get; set; } = string.Empty;
 
         [StringLength(50)]
         [Required]
