@@ -26,7 +26,7 @@ namespace backend.Controllers
         /// 分页查询送货单列表（含明细，内存分页兼容低版本SQL）
         /// </summary>
         [HttpPost]
-        public async Task<IActionResult> GetList([FromBody] DeliveryGetDto deliveryGetDto)
+        public async Task<IActionResult> GetDeliveryNote([FromBody] DeliveryGetDto deliveryGetDto)
         {
             var query = _context.DeliveryNotes.Where(d => !d.IsDel).AsQueryable();
 
@@ -89,167 +89,187 @@ namespace backend.Controllers
         }
 
         /// <summary>
-        /// 获取送货单详情（含明细）
+        /// 根据采购订单生成送货单
         /// </summary>
-        [HttpGet("{noteId}")]
-        public async Task<IActionResult> GetDetail(string notecode)
+        [HttpPost]
+        public async Task<IActionResult> CreateDeliveryNote([FromBody] DeliveryDto deliveryDto)
         {
-            var note = await _context.DeliveryNotes
-                .FirstOrDefaultAsync(n => n.NoteCode == notecode && !n.IsDel);
-            if (note == null)
-                return NotFound(new { code = 404, msg = "送货单不存在" });
+            if (string.IsNullOrWhiteSpace(deliveryDto.OrderID))
+                return BadRequest(new { code = 400, message = "采购订单ID不能为空" });
 
-            var details = await _context.DeliveryDetails
-                .Where(d => note.NoteID == notecode && !d.IsDel)
-                .Select(d => new
-                {
-                    d.DeliveryDetailID,
-                    d.MaterialCode,
-                    d.MaterialName,
-                    d.Quantity,
-                    d.Unit,
-                    d.UnitPrice,
-                    d.Amount,
-                    d.ReceivedQty
-                })
-                .ToListAsync();
+            if (string.IsNullOrWhiteSpace(deliveryDto.CreateByID))
+                return BadRequest(new { code = 400, message = "创建人ID不能为空" });
 
-            return Ok(new { code = 200, data = new { note, details } });
-        }
+            if (string.IsNullOrWhiteSpace(deliveryDto.CreateByName))
+                return BadRequest(new { code = 400, message = "创建人姓名不能为空" });
 
-        /// <summary>
-        /// 基于采购订单生成送货单
-        /// </summary>
-        [HttpPost("generate")]
-        public async Task<IActionResult> Generate([FromBody] DeliveryDto request)
-        {
-            // ✅ 安全处理可空 Status 比较
-            var order = await _context.PurchaseOrders
-                .FirstOrDefaultAsync(o => o.OrderID == request.OrderID && !o.IsDel);
-            if (order == null)
-                return BadRequest(new { code = 400, msg = "采购订单不存在或已被删除" });
-            if (order.Status is not 1)
-                return BadRequest(new { code = 400, msg = "仅允许已确认状态的采购订单生成送货单" });
+            var purchaseOrder = await _context.PurchaseOrders
+                .Include(o => o.OrderDetails)
+                .Include(o => o.Supplier)
+                .FirstOrDefaultAsync(o => o.OrderID == deliveryDto.OrderID && !o.IsDel);
 
-            // 校验唯一性
-            var exists = await _context.DeliveryNotes
-                .AnyAsync(n => n.OrderID == request.OrderID && !n.IsDel);
-            if (exists)
-                return BadRequest(new { code = 400, msg = "该采购订单已生成送货单，不可重复生成" });
+            if (purchaseOrder == null)
+                return NotFound(new { code = 404, message = "采购订单不存在" });
 
-            // ✅ OrderDetail 已包含 IsDel 字段，可直接过滤
-            var orderDetails = await _context.OrderDetails
-                .Where(od => od.OrderID == request.OrderID )//&& !od.IsDel)
-                .ToListAsync();
-            if (!orderDetails.Any())
-                return BadRequest(new { code = 400, msg = "采购订单无有效明细，无法生成送货单" });
+            if (purchaseOrder.Status != 1 && purchaseOrder.Status != 2)
+                return BadRequest(new { code = 400, message = "采购订单状态不允许生成送货单" });
 
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            var dateStr = DateTime.Now.ToString("yyyyMMdd");
+            var todayMaxCode = await _context.DeliveryNotes
+                .Where(d => d.NoteCode.StartsWith($"DSH{dateStr}") && !d.IsDel)
+                .OrderByDescending(d => d.NoteCode)
+                .FirstOrDefaultAsync();
+
+            int sequence = 1;
+            if (todayMaxCode != null)
             {
-                // 生成单号
-                var today = DateTime.Now.ToString("yyyyMMdd");
-                var lastNote = await _context.DeliveryNotes
-                    .Where(n => n.NoteCode.StartsWith($"DSH{today}"))
-                    .OrderByDescending(n => n.NoteCode)
-                    .FirstOrDefaultAsync();
-                var seq = 1;
-                if (lastNote != null && lastNote.NoteCode.Length >= 14 &&
-                    int.TryParse(lastNote.NoteCode.Substring(11), out var lastSeq))
-                    seq = lastSeq + 1;
-                var noteCode = $"DSH{today}{seq:D3}";
-
-                // 创建主表
-                var deliveryNote = new DeliveryNote
+                var lastNumStr = todayMaxCode.NoteCode.Substring(11);
+                if (int.TryParse(lastNumStr, out int lastNum))
                 {
-                    NoteID = Guid.NewGuid().ToString("N"),
-                    NoteCode = noteCode,
-                    OrderID = order.OrderID,
-                    SupplierID = order.SupplierID ?? string.Empty,
-                    SupplierName = order.SupplierName ?? string.Empty,
-                    Status = false,
-                    ExpectedDate = request.ExpectedDate,
-                    CreateByID = request.CreateByID ?? string.Empty,
-                    CreateByName = request.CreateByName ?? string.Empty,
-                    CreatedTime = DateTime.Now,
-                    IsDel = false,
-                    UpdatedTime = null
-                };
-                _context.DeliveryNotes.Add(deliveryNote);
+                    sequence = lastNum + 1;
+                }
+            }
 
-                // ✅ 优先使用 DTO 传入的数据，降级使用 OrderDetail 冗余字段
-                foreach (var od in orderDetails)
+            var noteCode = $"DSH{dateStr}{sequence.ToString("D3")}";
+
+            var deliveryNote = new DeliveryNote
+            {
+                NoteID = Guid.NewGuid().ToString(),
+                NoteCode = noteCode,
+                OrderID = deliveryDto.OrderID,
+                SupplierID = purchaseOrder.SupplierID,
+                SupplierName = purchaseOrder.SupplierName,
+                Status = false,
+                ExpectedDate = deliveryDto.ExpectedDate,
+                DeliveryDate = null,
+                CreateByID = deliveryDto.CreateByID,
+                CreateByName = deliveryDto.CreateByName,
+                CreatedTime = DateTime.Now,
+                IsDel = false
+            };
+
+            _context.DeliveryNotes.Add(deliveryNote);
+
+            var orderDetailDict = purchaseOrder.OrderDetails?.ToDictionary(od => od.MaterialCode) ?? new Dictionary<string, OrderDetail>();
+
+            Dictionary<string, Material> materialDict = new Dictionary<string, Material>();
+            if (orderDetailDict.Any())
+            {
+                var materialCodes = orderDetailDict.Keys.ToList();
+                materialDict = await _context.Materials
+                    .Where(m => materialCodes.Contains(m.MaterialCode))
+                    .ToDictionaryAsync(m => m.MaterialCode);
+            }
+
+            List<DeliveryDetail> deliveryDetails;
+            if (deliveryDto.DetailQuantities != null && deliveryDto.DetailQuantities.Any())
+            {
+                deliveryDetails = new List<DeliveryDetail>();
+                foreach (var item in deliveryDto.DetailQuantities)
                 {
-                    // 从 DTO 中查找当前物料的自定义配置
-                    var dtoDetail = request.DetailQuantities?
-                        .FirstOrDefault(q => q.MaterialCode == od.MaterialCode);
+                    if (string.IsNullOrWhiteSpace(item.MaterialCode))
+                        return BadRequest(new { code = 400, message = "物料编码不能为空" });
 
-                    var customQty = dtoDetail?.Quantity ?? od.Qty;
+                    if (item.Quantity <= 0)
+                        return BadRequest(new { code = 400, message = "送货数量必须大于0" });
 
-                    if (customQty <= 0)
-                        return BadRequest(new { code = 400, msg = $"物料 {od.MaterialCode} 的送货数量必须大于0" });
+                    if (!orderDetailDict.TryGetValue(item.MaterialCode, out var orderDetail))
+                        return BadRequest(new { code = 400, message = $"采购订单中不存在物料：{item.MaterialCode}" });
 
-                    var detail = new DeliveryDetail
+                    if (item.Quantity > orderDetail.Qty)
+                        return BadRequest(new { code = 400, message = $"送货数量超过采购数量，物料：{item.MaterialCode}" });
+
+                    string materialName = item.MaterialName ?? materialDict?.GetValueOrDefault(item.MaterialCode)?.MaterialName ?? string.Empty;
+                    string unit = item.Unit ?? materialDict?.GetValueOrDefault(item.MaterialCode)?.Unit ?? string.Empty;
+
+                    deliveryDetails.Add(new DeliveryDetail
                     {
-                        DeliveryDetailID = Guid.NewGuid().ToString("N"),
+                        DeliveryDetailID = Guid.NewGuid().ToString(),
+                        NoteID = deliveryNote.NoteID,
+                        MaterialCode = item.MaterialCode,
+                        MaterialName = materialName,
+                        Unit = unit,
+                        Quantity = item.Quantity,
+                        UnitPrice = orderDetail.UnitPrice,
+                        Amount = item.Quantity * (orderDetail.UnitPrice ?? 0),
+                        ReceivedQty = 0,
+                        IsDel = false,
+                    });
+                }
+            }
+            else
+            {
+                deliveryDetails = purchaseOrder.OrderDetails?
+                    .Select(od => new DeliveryDetail
+                    {
+                        DeliveryDetailID = Guid.NewGuid().ToString(),
                         NoteID = deliveryNote.NoteID,
                         MaterialCode = od.MaterialCode,
-
-                        // ✅ 优先级：DTO传入 > OrderDetail冗余字段 > 空字符串
-                        MaterialName = dtoDetail.MaterialName,
-                        Unit = dtoDetail.Unit,
-                        Quantity = customQty,
+                        MaterialName = materialDict?.GetValueOrDefault(od.MaterialCode)?.MaterialName ?? string.Empty,
+                        Unit = materialDict?.GetValueOrDefault(od.MaterialCode)?.Unit ?? string.Empty,
+                        Quantity = od.Qty,
                         UnitPrice = od.UnitPrice,
+                        Amount = od.Amount,
                         ReceivedQty = 0,
-                        Amount = od.UnitPrice.HasValue ? od.UnitPrice.Value * customQty : null,
                         IsDel = false,
-                        UpdatedTime = null
-                    };
-
-                    _context.DeliveryDetails.Add(detail);
-                }
-
-                // 更新订单状态为"已生成送货单"
-                order.Status = 3;
-                order.UpdateByID = request.CreateByID ?? string.Empty;
-                order.UpdateByName = request.CreateByName ?? string.Empty;
-                order.UpdateTime = DateTime.Now;
-
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
-
-                return Ok(new { code = 200, msg = "送货单生成成功", data = new { deliveryNote.NoteID, deliveryNote.NoteCode } });
+                    })
+                    .ToList() ?? new List<DeliveryDetail>();
             }
-            catch (Exception ex)
+
+            _context.DeliveryDetails.AddRange(deliveryDetails);
+            await _context.SaveChangesAsync();
+
+            return Ok(new
             {
-                await transaction.RollbackAsync();
-                return StatusCode(500, new { code = 500, msg = $"生成失败: {ex.Message}" });
-            }
+                code = 200,
+                message = "送货单创建成功",
+                data = new
+                {
+                    deliveryNote.NoteID,
+                    deliveryNote.NoteCode,
+                    deliveryNote.OrderID,
+                    deliveryNote.SupplierID,
+                    deliveryNote.SupplierName,
+                    deliveryNote.Status,
+                    deliveryNote.ExpectedDate,
+                    deliveryNote.CreatedTime,
+                    DetailCount = deliveryDetails.Count
+                }
+            });
         }
 
         /// <summary>
-        /// 逻辑删除/作废送货单
+        /// 删除送货单（软删除）
         /// </summary>
         [HttpDelete("{noteId}")]
-        public async Task<IActionResult> Delete(string noteId, [FromQuery] string operatorId, [FromQuery] string operatorName)
+        public async Task<IActionResult> DeleteDeliveryNote(string noteId)
         {
-            var note = await _context.DeliveryNotes
-                .FirstOrDefaultAsync(n => n.NoteID == noteId && !n.IsDel);
-            if (note == null)
-                return NotFound(new { code = 404, msg = "送货单不存在" });
-            if (note.Status)
-                return BadRequest(new { code = 400, msg = "已收货的送货单不可作废" });
+            if (string.IsNullOrWhiteSpace(noteId))
+                return BadRequest(new { code = 400, message = "送货单ID不能为空" });
 
-            note.IsDel = true;
-            note.UpdatedTime = DateTime.Now;
+            var deliveryNote = await _context.DeliveryNotes
+                .Include(d => d.ReceiveRecords)
+                .FirstOrDefaultAsync(d => d.NoteID == noteId && !d.IsDel);
 
-            // ✅ DeliveryDetail 已包含 IsDel/UpdatedTime，可安全赋值
+            if (deliveryNote == null)
+                return NotFound(new { code = 404, message = "送货单不存在" });
+
+            if (deliveryNote.ReceiveRecords != null && deliveryNote.ReceiveRecords.Any())
+                return BadRequest(new { code = 400, message = "该送货单已有收料记录，无法删除" });
+
+            deliveryNote.IsDel = true;
+
             var details = await _context.DeliveryDetails
-                .Where(d => d.NoteID == noteId && !d.IsDel).ToListAsync();
-            details.ForEach(d => { d.IsDel = true; d.UpdatedTime = DateTime.Now; });
+                .Where(dd => dd.NoteID == noteId)
+                .ToListAsync();
+            foreach (var detail in details)
+            {
+                detail.IsDel = true;
+            }
 
             await _context.SaveChangesAsync();
-            return Ok(new { code = 200, msg = "送货单已作废" });
+
+            return Ok(new { code = 200, message = "送货单已删除" });
         }
     }
 }

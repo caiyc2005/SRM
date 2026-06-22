@@ -137,7 +137,7 @@ namespace backend.Models
             modelBuilder.Entity<ReceiveRecord>(entity =>
             {
                 entity.ToTable("ReceiveRecord");
-                entity.HasKey(e => e.RecordID);
+                entity.HasKey(e => e.ReceiveID);
             });
 
             // ReceiveDetail 配置
