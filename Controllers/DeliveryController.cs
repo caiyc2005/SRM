@@ -88,6 +88,8 @@ namespace backend.Controllers
             });
         }
 
+        #region
+        /*
         /// <summary>
         /// 根据采购订单生成送货单
         /// </summary>
@@ -100,6 +102,36 @@ namespace backend.Controllers
             if (string.IsNullOrWhiteSpace(deliveryDto.CreateByID))
                 return BadRequest(new { code = 400, message = "创建人ID不能为空" });
 
+            return Ok(new { code = 200, data = new { note, details } });
+        }
+        */
+        #endregion
+        /// <summary>
+        /// 基于采购订单生成送货单
+        /// </summary>
+        [HttpPost("generate")]
+        public async Task<IActionResult> Generate([FromBody] DeliveryDto request)
+        {
+            // ✅ 安全处理可空 Status 比较
+            var order = await _context.PurchaseOrders
+                .FirstOrDefaultAsync(o => o.OrderID == request.OrderID && !o.IsDel);
+            if (order == null)
+                return BadRequest(new { code = 400, msg = "采购订单不存在或已被删除" });
+            if (order.Status is not 1)
+                return BadRequest(new { code = 400, msg = "仅允许已确认状态的采购订单生成送货单" });
+
+            // 校验唯一性
+            var exists = await _context.DeliveryNotes
+                .AnyAsync(n => n.OrderID == request.OrderID && !n.IsDel);
+            if (exists)
+                return BadRequest(new { code = 400, msg = "该采购订单已生成送货单，不可重复生成" });
+
+            // ✅ OrderDetail 已包含 IsDel 字段，可直接过滤
+            var orderDetails = await _context.OrderDetails
+                .Where(od => od.OrderID == request.OrderID )//&& !od.IsDel)
+                .ToListAsync();
+            if (!orderDetails.Any())
+                return BadRequest(new { code = 400, msg = "采购订单无有效明细，无法生成送货单" });
             if (string.IsNullOrWhiteSpace(deliveryDto.CreateByName))
                 return BadRequest(new { code = 400, message = "创建人姓名不能为空" });
 
