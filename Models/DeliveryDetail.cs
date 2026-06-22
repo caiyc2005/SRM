@@ -1,3 +1,5 @@
+// backend/Models/DeliveryDetail.cs
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -8,46 +10,43 @@ namespace backend.Models
     {
         [Key]
         [StringLength(50)]
-        public string DeliveryDetailID { get; set; }
+        public string DeliveryDetailID { get; set; } = string.Empty;
 
         [StringLength(50)]
         [Required]
-        public string NoteID { get; set; }
+        public string NoteID { get; set; } = string.Empty;
 
         [StringLength(50)]
         [Required]
-        public string MaterialCode { get; set; }
+        public string MaterialCode { get; set; } = string.Empty;
 
-        [StringLength(50)]
-        [Required]
-        public string MaterialName { get; set; }
+        [StringLength(200)]
+        public string? MaterialName { get; set; }
 
         [Column(TypeName = "decimal(18,4)")]
         [Required]
         public decimal Quantity { get; set; }
 
         [StringLength(20)]
-        [Required]
-        public string Unit { get; set; }
+        public string? Unit { get; set; }
 
         [Column(TypeName = "decimal(18,4)")]
         public decimal? UnitPrice { get; set; }
 
         [Column(TypeName = "decimal(18,4)")]
-        [Required]
-        public decimal ReceivedQty { get; set; }
-
-        [Column(TypeName = "decimal(18,4)")]
         public decimal? Amount { get; set; }
 
-        [Required]
-        public bool IsDel { get; set; }
+        [Column(TypeName = "decimal(18,4)")]
+        public decimal ReceivedQty { get; set; } = 0;
 
-        // 外键关联：多个明细属于一个送货单
+        // ✅ 必须存在
+        public bool IsDel { get; set; } = false;
+        public DateTime? UpdatedTime { get; set; }
+        public DateTime? CreatedTime { get; set; }
+
         [ForeignKey(nameof(NoteID))]
-        public virtual DeliveryNote DeliveryNote { get; set; }
+        public virtual DeliveryNote? DeliveryNote { get; set; }
 
-        // 导航属性：一个送货明细有多个收料明细
-        public virtual ICollection<ReceiveDetail> ReceiveDetails { get; set; }
+        public virtual ICollection<ReceiveDetail>? ReceiveDetails { get; set; }
     }
 }

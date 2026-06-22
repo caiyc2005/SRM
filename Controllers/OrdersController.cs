@@ -44,7 +44,7 @@ namespace backend.Controllers
                 return Unauthorized(ApiResult.Fail("无法获取当前用户信息"));
 
             // ========== 生成订单编号 ==========
-            var dateStr = DateTime.Now.ToString("yyyyMMddHHmmss");
+            var dateStr = DateTime.Now.ToString("yyyyMMdd");
             var guidPart = Guid.NewGuid().ToString("N").Substring(0, 3).ToUpper();
             //var orderCode = $"PO{dateStr}{new Random().Next(100, 999)}";//这个方法随机生成随机数，但是有概率会重复
             var orderCode = $"PO{dateStr}{guidPart}";
