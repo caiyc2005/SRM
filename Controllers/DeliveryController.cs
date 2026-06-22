@@ -88,6 +88,8 @@ namespace backend.Controllers
             });
         }
 
+        #region
+        /*
         /// <summary>
         /// 获取送货单详情（含明细）
         /// </summary>
@@ -116,7 +118,8 @@ namespace backend.Controllers
 
             return Ok(new { code = 200, data = new { note, details } });
         }
-
+        */
+        #endregion
         /// <summary>
         /// 基于采购订单生成送货单
         /// </summary>
