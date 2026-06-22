@@ -1,4 +1,5 @@
-﻿using backend.Models.Dto;
+﻿using backend.Models;
+using backend.Models.Dto;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
