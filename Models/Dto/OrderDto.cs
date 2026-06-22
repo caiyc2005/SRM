@@ -1,9 +1,15 @@
 namespace backend.Models.Dto
 {
+    public class OrderIdRequest
+    {
+        public string ID { get; set; }
+    }
+
+
     /// <summary>
     /// 创建采购订单请求 DTO
     /// </summary>
-    public class OrderCreateDto
+    public class OrderDto
     {
         /// <summary>供应商ID</summary>
         public string SupplierID { get; set; }
