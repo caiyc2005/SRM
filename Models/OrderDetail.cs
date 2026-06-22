@@ -31,5 +31,9 @@ namespace backend.Models
         // 外键关联：多个明细属于一个采购订单
         [ForeignKey(nameof(OrderID))]
         public virtual PurchaseOrder PurchaseOrder { get; set; }
+
+        // 外键关联：物料
+        [ForeignKey(nameof(MaterialCode))]
+        public virtual Material Material { get; set; }
     }
 }
