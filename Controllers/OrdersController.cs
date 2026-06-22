@@ -162,9 +162,9 @@ namespace backend.Controllers
                     {
                         d.OrderDetailID,
                         d.MaterialCode,
-                        //MaterialName = _context.Materials.Where(m => m.MaterialID == d.MaterialCode).Select(m => m.MaterialName).FirstOrDefault(),
-                        //Spec = _context.Materials.Where(m => m.MaterialID == d.MaterialCode).Select(m => m.Spec).FirstOrDefault(),
-                        //Unit = _context.Materials.Where(m => m.MaterialID == d.MaterialCode).Select(m => m.Unit).FirstOrDefault(),
+                        MaterialName = _context.Materials.Where(m => m.MaterialCode == d.MaterialCode).Select(m => m.MaterialName).FirstOrDefault(),
+                        Spec = _context.Materials.Where(m => m.MaterialCode == d.MaterialCode).Select(m => m.Spec).FirstOrDefault(),
+                        Unit = _context.Materials.Where(m => m.MaterialCode == d.MaterialCode).Select(m => m.Unit).FirstOrDefault(),
                         d.Qty,
                         d.UnitPrice,
                         d.Amount
@@ -195,9 +195,9 @@ namespace backend.Controllers
                     {
                         d.OrderDetailID,
                         d.MaterialCode,
-                        //d.MaterialName,
-                        //d.Spec,
-                        //d.Unit,
+                        d.MaterialName,
+                        d.Spec,
+                        d.Unit,
                         d.Qty,
                         d.UnitPrice,
                         d.Amount
