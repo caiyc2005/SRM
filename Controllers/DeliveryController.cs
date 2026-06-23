@@ -313,6 +313,7 @@ namespace backend.Controllers
                         {
                             DetailID = dd.DeliveryDetailID,   // ✅ 正确：映射到 DeliveryDetailID
                             dd.MaterialCode,
+                            Spec = _context.Materials.Where(m => m.MaterialCode == dd.MaterialCode).Select(m => m.Spec).FirstOrDefault() ?? string.Empty,
                             MaterialName = dd.MaterialName ?? string.Empty, // 防 null
                             Unit = dd.Unit ?? string.Empty,
                             dd.Quantity,
