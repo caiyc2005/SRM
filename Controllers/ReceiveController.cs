@@ -182,7 +182,7 @@ namespace backend.Controllers
 
             if (isFullyReceived && deliveryNote.PurchaseOrder != null)
             {
-                deliveryNote.PurchaseOrder.Status = 3;
+                deliveryNote.PurchaseOrder.Status = 4;
                 deliveryNote.PurchaseOrder.UpdateByID = receiveCreateDto.ReceiveUserID;
                 deliveryNote.PurchaseOrder.UpdateByName = receiveCreateDto.ReceiveUserName;
                 deliveryNote.PurchaseOrder.UpdateTime = DateTime.Now;
