@@ -1,8 +1,7 @@
-﻿using Azure.Core;
-using backend.Models;
+﻿using backend.Models;
 using backend.Models.Dto;
 using backend.Models.Dto.Supplier;
-using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,6 +9,7 @@ namespace backend.Controllers
 {
     [Route("[controller]/[action]")]
     [ApiController]
+    [Authorize(Roles = "admin")]
     public class SupplierController : ControllerBase
     {
         private readonly AppDbContext _context;

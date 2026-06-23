@@ -1,6 +1,6 @@
-﻿
-using backend.Models.Dto;
+﻿using backend.Models.Dto;
 using backend.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -12,6 +12,7 @@ namespace backend.Controllers
 {
     [ApiController]
     [Route("[controller]/[action]")]
+    [Authorize(Roles = "admin,supplier")]
     public class DeliveryController : ControllerBase
     {
         private readonly AppDbContext _context;
