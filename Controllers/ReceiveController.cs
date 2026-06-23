@@ -3,6 +3,7 @@ using backend.Models.Dto;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace backend.Controllers
 {
@@ -11,6 +12,7 @@ namespace backend.Controllers
     public class ReceiveController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private const decimal ERROR_TOLERANCE = 0.05m;
 
         public ReceiveController(AppDbContext context)
         {
@@ -32,13 +34,30 @@ namespace backend.Controllers
             var deliveryNote = await _context.DeliveryNotes
                 .Include(d => d.DeliveryDetails)
                 .Include(d => d.Supplier)
+                .Include(d => d.PurchaseOrder)
                 .FirstOrDefaultAsync(d => d.NoteCode == receiveCreateDto.NoteCode && !d.IsDel);
 
             if (deliveryNote == null)
                 return NotFound(new { code = 404, message = "送货单不存在" });
 
             if (deliveryNote.Status)
-                return BadRequest(new { code = 400, message = "该送货单已完成收料" });
+                return BadRequest(new { code = 400, message = "该送货单已完成收料，不允许重复收料" });
+
+            var receiveUser = await _context.Users
+                .FirstOrDefaultAsync(u => u.UserID == receiveCreateDto.ReceiveUserID && !u.IsDel);
+
+            if (receiveUser == null)
+                return BadRequest(new { code = 400, message = "收料人不存在" });
+
+            var materialCodes = deliveryNote.DeliveryDetails
+                .Where(dd => !dd.IsDel)
+                .Select(dd => dd.MaterialCode)
+                .Distinct()
+                .ToList();
+
+            var materialDict = await _context.Materials
+                .Where(m => materialCodes.Contains(m.MaterialCode) && !m.IsDel)
+                .ToDictionaryAsync(m => m.MaterialCode, m => m.MaterialID);
 
             var dateStr = DateTime.Now.ToString("yyyyMMdd");
 
@@ -95,19 +114,29 @@ namespace backend.Controllers
                     if (!deliveryDetailDict.TryGetValue(item.MaterialCode, out var deliveryDetails))
                         return BadRequest(new { code = 400, message = $"送货单中不存在物料：{item.MaterialCode}" });
 
+                    if (!materialDict.TryGetValue(item.MaterialCode, out var materialId))
+                        return BadRequest(new { code = 400, message = $"物料不存在：{item.MaterialCode}" });
+
                     var deliveryDetail = deliveryDetails.First(dd => dd.ReceivedQty < dd.Quantity);
                     if (deliveryDetail == null)
                         return BadRequest(new { code = 400, message = $"物料 {item.MaterialCode} 已全部收料完成" });
 
-                    if (item.ReceivedQty > deliveryDetail.Quantity - deliveryDetail.ReceivedQty)
-                        return BadRequest(new { code = 400, message = $"收料数量超过可收数量，物料：{item.MaterialCode}" });
+                    var availableQty = deliveryDetail.Quantity - deliveryDetail.ReceivedQty;
+                    var maxAllowedQty = availableQty * (1 + ERROR_TOLERANCE);
+                    var minAllowedQty = availableQty * (1 - ERROR_TOLERANCE);
+
+                    if (item.ReceivedQty > maxAllowedQty)
+                        return BadRequest(new { code = 400, message = $"收料数量超过允许范围（最大允许 {maxAllowedQty:F4}），物料：{item.MaterialCode}" });
+
+                    if (item.ReceivedQty < minAllowedQty && availableQty > 0)
+                        return BadRequest(new { code = 400, message = $"收料数量低于允许范围（最小允许 {minAllowedQty:F4}），物料：{item.MaterialCode}" });
 
                     receiveDetails.Add(new ReceiveDetail
                     {
                         ReceiveDetailID = Guid.NewGuid().ToString(),
                         ReceiveID = receiveRecord.ReceiveID,
                         DeliveryDetailID = deliveryDetail.DeliveryDetailID,
-                        MaterialID = deliveryDetail.MaterialCode,
+                        MaterialID = materialId,
                         MaterialCode = deliveryDetail.MaterialCode,
                         PlanQty = deliveryDetail.Quantity,
                         ReceivedQty = item.ReceivedQty,
@@ -129,7 +158,7 @@ namespace backend.Controllers
                         ReceiveDetailID = Guid.NewGuid().ToString(),
                         ReceiveID = receiveRecord.ReceiveID,
                         DeliveryDetailID = dd.DeliveryDetailID,
-                        MaterialID = dd.MaterialCode,
+                        MaterialID = materialDict.TryGetValue(dd.MaterialCode, out var mid) ? mid : string.Empty,
                         MaterialCode = dd.MaterialCode,
                         PlanQty = dd.Quantity,
                         ReceivedQty = dd.Quantity - dd.ReceivedQty,
@@ -148,10 +177,51 @@ namespace backend.Controllers
 
             _context.ReceiveDetails.AddRange(receiveDetails);
 
-            if (deliveryNote.DeliveryDetails.All(dd => dd.IsDel || dd.ReceivedQty >= dd.Quantity))
+            bool isFullyReceived = deliveryNote.DeliveryDetails.All(dd => dd.IsDel || dd.ReceivedQty >= dd.Quantity);
+            if (isFullyReceived)
             {
                 deliveryNote.Status = true;
                 deliveryNote.DeliveryDate = DateTime.Now;
+            }
+
+            if (isFullyReceived && deliveryNote.PurchaseOrder != null)
+            {
+                deliveryNote.PurchaseOrder.Status = 3;
+                deliveryNote.PurchaseOrder.UpdateByID = receiveCreateDto.ReceiveUserID;
+                deliveryNote.PurchaseOrder.UpdateByName = receiveCreateDto.ReceiveUserName;
+                deliveryNote.PurchaseOrder.UpdateTime = DateTime.Now;
+            }
+
+            foreach (var detail in receiveDetails)
+            {
+                var existingInventory = await _context.Inventories
+                    .FirstOrDefaultAsync(i => i.MaterialID == detail.MaterialID && !i.WareID.Contains("TEMP"));
+
+                if (existingInventory != null)
+                {
+                    existingInventory.Qty += detail.ReceivedQty;
+                    existingInventory.LastReceiveTime = DateTime.Now;
+                    existingInventory.UpdateByID = receiveCreateDto.ReceiveUserID;
+                    existingInventory.UpdateByName = receiveCreateDto.ReceiveUserName;
+                }
+                else
+                {
+                    var warehouse = await _context.Warehouses.FirstOrDefaultAsync(w => !w.IsDel);
+                    if (warehouse != null)
+                    {
+                        var newInventory = new Inventory
+                        {
+                            InventoryID = Guid.NewGuid().ToString(),
+                            MaterialID = detail.MaterialID,
+                            WareID = warehouse.WareID,
+                            Qty = detail.ReceivedQty,
+                            LastReceiveTime = DateTime.Now,
+                            UpdateByID = receiveCreateDto.ReceiveUserID,
+                            UpdateByName = receiveCreateDto.ReceiveUserName
+                        };
+                        _context.Inventories.Add(newInventory);
+                    }
+                }
             }
 
             await _context.SaveChangesAsync();
@@ -171,12 +241,13 @@ namespace backend.Controllers
                     receiveRecord.ReceiveUserName,
                     receiveRecord.ReceiveDate,
                     receiveRecord.Memo,
-                    DetailCount = receiveDetails.Count
+                    DetailCount = receiveDetails.Count,
+                    IsFullyReceived = isFullyReceived
                 }
             });
         }
 
-        [HttpPost]
+        [HttpPost("list")]
         public async Task<IActionResult> GetReceive([FromBody] ReceiveGetDto receiveGetDto)
         {
             var query = _context.ReceiveRecords.Where(r => !r.IsDel).AsQueryable();
@@ -216,7 +287,9 @@ namespace backend.Controllers
                             rd.PlanQty,
                             rd.ReceivedQty,
                             rd.DiffQty,
-                            Unit = rd.DeliveryDetail.Unit ?? string.Empty
+                            Unit = rd.DeliveryDetail.Unit ?? string.Empty,
+                            UnitPrice = rd.DeliveryDetail.UnitPrice,
+                            Amount = rd.ReceivedQty * (rd.DeliveryDetail.UnitPrice ?? 0)
                         })
                         .ToList()
                 })
@@ -238,54 +311,6 @@ namespace backend.Controllers
                     pageSize = receiveGetDto.pageSize
                 }
             });
-        }
-
-        [HttpGet("{receiveId}")]
-        public async Task<IActionResult> GetReceiveById(string receiveId)
-        {
-            if (string.IsNullOrWhiteSpace(receiveId))
-                return BadRequest(new { code = 400, message = "收料单ID不能为空" });
-
-            var receiveRecord = await _context.ReceiveRecords
-                .Include(r => r.DeliveryNote)
-                .Include(r => r.Supplier)
-                .Include(r => r.ReceiveDetails)
-                    .ThenInclude(rd => rd.DeliveryDetail)
-                .FirstOrDefaultAsync(r => r.ReceiveID == receiveId && !r.IsDel);
-
-            if (receiveRecord == null)
-                return NotFound(new { code = 404, message = "收料单不存在" });
-
-            var result = new
-            {
-                receiveRecord.ReceiveID,
-                receiveRecord.ReceiveCode,
-                receiveRecord.NoteID,
-                NoteCode = receiveRecord.DeliveryNote?.NoteCode,
-                receiveRecord.SupplierID,
-                receiveRecord.SupplierName,
-                receiveRecord.ReceiveUserID,
-                receiveRecord.ReceiveUserName,
-                receiveRecord.ReceiveDate,
-                receiveRecord.Memo,
-                Details = receiveRecord.ReceiveDetails
-                    .Where(rd => !rd.IsDel)
-                    .Select(rd => new
-                    {
-                        rd.ReceiveDetailID,
-                        rd.MaterialCode,
-                        MaterialName = rd.DeliveryDetail.MaterialName ?? string.Empty,
-                        rd.PlanQty,
-                        rd.ReceivedQty,
-                        rd.DiffQty,
-                        Unit = rd.DeliveryDetail.Unit ?? string.Empty,
-                        UnitPrice = rd.DeliveryDetail.UnitPrice,
-                        Amount = rd.ReceivedQty * (rd.DeliveryDetail.UnitPrice ?? 0)
-                    })
-                    .ToList()
-            };
-
-            return Ok(new { code = 200, data = result });
         }
     }
 }
