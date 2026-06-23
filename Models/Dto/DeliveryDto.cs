@@ -4,6 +4,8 @@
     public class DeliveryGetDto
     {
         public string? noteCode { get; set; }
+
+        public string? orderCode { get; set; }
         public string? supplierId { get; set; }
         public bool? status { get; set; }
         public int page { get; set; } = 1;

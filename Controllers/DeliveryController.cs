@@ -181,7 +181,7 @@ namespace backend.Controllers
         /// 供应商确认发货
         /// </summary>
         [HttpPost]
-        public async Task<IActionResult> DeliveryConfirm([FromBody] ConfirmDeliveryDto confirmDto)
+        public async Task<IActionResult> DeliveryConfirm(ConfirmDeliveryDto confirmDto)
         {
             if (string.IsNullOrWhiteSpace(confirmDto.OrderID))
                 return BadRequest(new { code = 400, message = "采购订单ID不能为空" });
@@ -190,8 +190,8 @@ namespace backend.Controllers
                 return BadRequest(new { code = 400, message = "供应商ID不能为空" });
 
             var purchaseOrder = await _context.PurchaseOrders
-                .Include(o => o.Supplier)
-                .Include(o => o.DeliveryNotes)
+                .Include(o => o.Supplier)//连接供应商表
+                .Include(o => o.DeliveryNotes)//连接送货单表
                 .FirstOrDefaultAsync(o => o.OrderID == confirmDto.OrderID && !o.IsDel);
 
             if (purchaseOrder == null)
@@ -275,7 +275,7 @@ namespace backend.Controllers
         /// 分页查询送货单列表（含明细，内存分页兼容低版本SQL）
         /// </summary>
         [HttpPost]
-        public async Task<IActionResult> GetDeliveryNote([FromBody] DeliveryGetDto deliveryGetDto)
+        public async Task<IActionResult> GetDeliveryNote(DeliveryGetDto deliveryGetDto)
         {
             var query = _context.DeliveryNotes.Where(d => !d.IsDel).AsQueryable();
 
@@ -283,6 +283,8 @@ namespace backend.Controllers
                 query = query.Where(d => d.NoteCode.Contains(deliveryGetDto.noteCode));
             if (!string.IsNullOrWhiteSpace(deliveryGetDto.supplierId))
                 query = query.Where(d => d.SupplierID == deliveryGetDto.supplierId);
+            if (!string.IsNullOrWhiteSpace(deliveryGetDto.orderCode))
+                query = query.Where(d => d.PurchaseOrder.OrderCode.Contains(deliveryGetDto.orderCode));
             if (deliveryGetDto.status.HasValue)
                 query = query.Where(d => d.Status == deliveryGetDto.status.Value);
 
@@ -296,9 +298,11 @@ namespace backend.Controllers
                     d.NoteID,
                     d.NoteCode,
                     d.OrderID,
+                    OrderCode = d.PurchaseOrder.OrderCode,
                     d.SupplierID,
                     d.SupplierName,
                     d.Status,
+                    OrderStatus = d.PurchaseOrder.Status,//返回订单状态
                     d.ExpectedDate,
                     d.DeliveryDate,
                     d.CreateByName,

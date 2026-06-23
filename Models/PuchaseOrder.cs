@@ -37,8 +37,8 @@ namespace backend.Models
         public DateTime? CreateTime { get; set; }
 
         [StringLength(50)]
-        [Required]
-        public string UpdateByID { get; set; }
+        //[Required]
+        public string? UpdateByID { get; set; }
 
         [StringLength(50)]
         public string? UpdateByName { get; set; }

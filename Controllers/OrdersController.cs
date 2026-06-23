@@ -158,6 +158,7 @@ namespace backend.Controllers
                     o.CreateTime,
                     o.UpdateTime,
                     o.Memo,
+                    NoteCode = o.DeliveryNotes.Where(dn => !dn.IsDel).Select(dn => dn.NoteCode).FirstOrDefault() ?? "",
                     OrderDetails = o.OrderDetails.Select(d => new
                     {
                         d.OrderDetailID,
@@ -190,6 +191,7 @@ namespace backend.Controllers
                     o.CreateTime,
                     o.UpdateTime,
                     o.Memo,
+                    o.NoteCode,
                     // 订单明细列表
                     OrderDetails = o.OrderDetails.Select(d => new
                     {
@@ -224,15 +226,15 @@ namespace backend.Controllers
         /// 确认后订单将进入待发货流程，供应商可以查看并安排发货。
         /// </remarks>
         [HttpPost]
-        public async Task<ActionResult<ApiResult>> ConfirmOrder([FromBody] OrderIdRequest request)
+        public async Task<ActionResult<ApiResult>> ConfirmOrder(OrderIdRequest request)
         {
             // ========== 参数校验 ==========
-            if (string.IsNullOrWhiteSpace(request.ID))
+            if (string.IsNullOrWhiteSpace(request.orderID))
                 return BadRequest(ApiResult.Fail("订单ID不能为空"));
 
             // ========== 查询订单信息 ==========
             var order = await _context.PurchaseOrders
-                .FirstOrDefaultAsync(o => o.OrderID == request.ID && !o.IsDel);
+                .FirstOrDefaultAsync(o => o.OrderID == request.orderID && !o.IsDel);
 
             if (order == null)
                 return NotFound(ApiResult.Fail("订单不存在"));

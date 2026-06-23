@@ -2,7 +2,7 @@ namespace backend.Models.Dto
 {
     public class OrderIdRequest
     {
-        public string ID { get; set; }
+        public string orderID { get; set; }
     }
 
 
