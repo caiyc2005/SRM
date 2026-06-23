@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 
 namespace backend.Controllers
 {
-    [Route("api/[controller]/[action]")]
+    [Route("[controller]/[action]")]
     [ApiController]
     public class ReceiveController : ControllerBase
     {

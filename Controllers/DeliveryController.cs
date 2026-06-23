@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 namespace backend.Controllers
 {
     [ApiController]
-    [Route("api/[controller]/[action]")]
+    [Route("[controller]/[action]")]
     public class DeliveryController : ControllerBase
     {
         private readonly AppDbContext _context;
