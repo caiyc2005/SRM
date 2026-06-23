@@ -268,6 +268,7 @@ namespace backend.Controllers
                     r.ReceiveCode,
                     r.NoteID,
                     NoteCode = r.DeliveryNote.NoteCode,
+                    OrderCode = r.DeliveryNote.PurchaseOrder.OrderCode,
                     r.SupplierID,
                     r.SupplierName,
                     r.ReceiveUserID,
