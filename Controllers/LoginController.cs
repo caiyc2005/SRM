@@ -13,11 +13,13 @@ namespace backend.Controllers
     {
         private readonly AppDbContext _context;
         private readonly IJwtService _jwtService;
+        private readonly IPasswordService _passwordService;
 
-        public LoginController(AppDbContext context, IJwtService jwtService)
+        public LoginController(AppDbContext context, IJwtService jwtService, IPasswordService passwordService)
         {
             _context = context;
             _jwtService = jwtService;
+            _passwordService = passwordService;
         }
 
         /// <summary>
@@ -78,14 +80,9 @@ namespace backend.Controllers
                 });
             }
 
-            // 验证密码（明文比对，后续可改为哈希比对）
-            if (user.Password != request.Password)
+            // 验证密码（密文比对）
+            if (!_passwordService.VerifyPassword(user.Password, request.Password))
             {
-                //return Unauthorized(new LoginResponse
-                //{
-                //    Success = false,
-                //    Message = "账号或密码错误"
-                //});
                 return Ok(new LoginResponse
                 {
                     Success = false,

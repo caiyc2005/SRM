@@ -1,6 +1,7 @@
 ﻿using backend.Models;
 using backend.Models.Dto;
 using backend.Models.Dto.Supplier;
+using backend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,10 +14,12 @@ namespace backend.Controllers
     public class SupplierController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly IPasswordService _passwordService;
 
-        public SupplierController(AppDbContext context)
+        public SupplierController(AppDbContext context, IPasswordService passwordService)
         {
             _context = context;
+            _passwordService = passwordService;
         }
 
         /// <summary>
@@ -154,7 +157,7 @@ namespace backend.Controllers
                     UserID = Guid.NewGuid().ToString(),
                     UserCode = addSupplierDto.supplierCode,
                     UserName = addSupplierDto.supplierName,
-                    Password = "123456",
+                    Password = _passwordService.HashPassword("123456"),
                     IsDel = false,
                     CreateTime = DateTime.Now,
                     //Memo = $"供应商用户 - {addSupplierDto.supplierName}"

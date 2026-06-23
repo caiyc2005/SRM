@@ -57,6 +57,7 @@ namespace backend
 
             // ========== 服务注册 ==========
             builder.Services.AddScoped<IJwtService, JwtService>();
+            builder.Services.AddScoped<IPasswordService, PasswordService>();
 
             // ========== 控制器 & Swagger ==========
             builder.Services.AddControllers();

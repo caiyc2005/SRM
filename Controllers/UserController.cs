@@ -1,5 +1,6 @@
 using backend.Models;
 using backend.Models.Dto;
+using backend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -12,10 +13,12 @@ namespace backend.Controllers
     public class UserController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly IPasswordService _passwordService;
 
-        public UserController(AppDbContext context)
+        public UserController(AppDbContext context, IPasswordService passwordService)
         {
             _context = context;
+            _passwordService = passwordService;
         }
 
         //临时调试
@@ -70,7 +73,7 @@ namespace backend.Controllers
                 UserID = Guid.NewGuid().ToString(),
                 UserCode = request.UserCode,
                 UserName = request.UserName,
-                Password = request.Password,
+                Password = _passwordService.HashPassword(request.Password),
                 IsDel = false,
                 CreateTime = DateTime.Now,
                 Memo = request.Memo
@@ -120,7 +123,7 @@ namespace backend.Controllers
             user.UserName = request.UserName ?? user.UserName;
             
             if (!string.IsNullOrWhiteSpace(request.Password))
-                user.Password = request.Password;
+                user.Password = _passwordService.HashPassword(request.Password);
             user.Memo = request.Memo ?? user.Memo;
             user.UpdateTime = DateTime.Now;
 
