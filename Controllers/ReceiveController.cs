@@ -12,8 +12,6 @@ namespace backend.Controllers
     public class ReceiveController : ControllerBase
     {
         private readonly AppDbContext _context;
-        private const decimal ERROR_TOLERANCE = 0.05m;
-
         public ReceiveController(AppDbContext context)
         {
             _context = context;
@@ -100,6 +98,7 @@ namespace backend.Controllers
                 .ToDictionary(g => g.Key, g => g.ToList());
 
             List<ReceiveDetail> receiveDetails;
+            var warnings = new List<string>();
             if (receiveCreateDto.Details != null && receiveCreateDto.Details.Any())
             {
                 receiveDetails = new List<ReceiveDetail>();
@@ -117,19 +116,16 @@ namespace backend.Controllers
                     if (!materialDict.TryGetValue(item.MaterialCode, out var materialId))
                         return BadRequest(new { code = 400, message = $"物料不存在：{item.MaterialCode}" });
 
-                    var deliveryDetail = deliveryDetails.First(dd => dd.ReceivedQty < dd.Quantity);
+                    var deliveryDetail = deliveryDetails.FirstOrDefault(dd => dd.ReceivedQty < dd.Quantity);
                     if (deliveryDetail == null)
                         return BadRequest(new { code = 400, message = $"物料 {item.MaterialCode} 已全部收料完成" });
 
-                    var availableQty = deliveryDetail.Quantity - deliveryDetail.ReceivedQty;
-                    var maxAllowedQty = availableQty * (1 + ERROR_TOLERANCE);
-                    var minAllowedQty = availableQty * (1 - ERROR_TOLERANCE);
+                    var remainingQty = deliveryDetail.Quantity - deliveryDetail.ReceivedQty;
+                    if (item.ReceivedQty > remainingQty)
+                        return BadRequest(new { code = 400, message = $"收料数量不能超过送货单剩余数量（最大 {remainingQty}），物料：{item.MaterialCode}" });
 
-                    if (item.ReceivedQty > maxAllowedQty)
-                        return BadRequest(new { code = 400, message = $"收料数量超过允许范围（最大允许 {maxAllowedQty:F4}），物料：{item.MaterialCode}" });
-
-                    if (item.ReceivedQty < minAllowedQty && availableQty > 0)
-                        return BadRequest(new { code = 400, message = $"收料数量低于允许范围（最小允许 {minAllowedQty:F4}），物料：{item.MaterialCode}" });
+                    if (item.ReceivedQty < deliveryDetail.Quantity / 2)
+                        warnings.Add($"物料 {item.MaterialCode} 实收数量（{item.ReceivedQty}）少于送货数量的一半（{deliveryDetail.Quantity}），请确认");
 
                     receiveDetails.Add(new ReceiveDetail
                     {
@@ -242,7 +238,8 @@ namespace backend.Controllers
                     receiveRecord.ReceiveDate,
                     receiveRecord.Memo,
                     DetailCount = receiveDetails.Count,
-                    IsFullyReceived = isFullyReceived
+                    IsFullyReceived = isFullyReceived,
+                    Warnings = warnings.Count > 0 ? warnings : null
                 }
             });
         }
