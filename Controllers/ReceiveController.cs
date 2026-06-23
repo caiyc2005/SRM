@@ -244,8 +244,8 @@ namespace backend.Controllers
             });
         }
 
-        [HttpPost("list")]
-        public async Task<IActionResult> GetReceive([FromBody] ReceiveGetDto receiveGetDto)
+        [HttpPost]
+        public async Task<IActionResult> GetReceivesList([FromBody] ReceiveGetDto receiveGetDto)
         {
             var query = _context.ReceiveRecords.Where(r => !r.IsDel).AsQueryable();
 
