@@ -10,4 +10,28 @@
 
         public string? Memo { get; set; }
     }
+
+    public class CreateMaterialDto
+    {
+        public string MaterialCode { get; set; }
+        public string MaterialName { get; set; }
+        public string Spec { get; set; }
+        public string Unit { get; set; }
+        public string? Memo { get; set; }
+    }
+
+    public class UpdateMaterialDto
+    {
+        public string MaterialID { get; set; }
+        public string MaterialCode { get; set; }
+        public string MaterialName { get; set; }
+        public string Spec { get; set; }
+        public string Unit { get; set; }
+        public string? Memo { get; set; }
+    }
+
+    public class DeleteMaterialDto
+    {
+        public string MaterialID { get; set; }
+    }
 }
