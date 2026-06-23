@@ -152,6 +152,10 @@ namespace backend.Controllers
             }
 
             _context.DeliveryDetails.AddRange(deliveryDetails);
+            if (purchaseOrder.Status == 1)
+            {
+                purchaseOrder.Status = 2;
+            }
             await _context.SaveChangesAsync();
 
             return Ok(new
