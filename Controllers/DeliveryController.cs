@@ -307,6 +307,7 @@ namespace backend.Controllers
                     d.DeliveryDate,
                     d.CreateByName,
                     d.CreatedTime,
+                    
                     Details = d.DeliveryDetails
                         .Where(dd => !dd.IsDel)  // ✅ 加上软删除过滤（推荐）
                         .Select(dd => new
@@ -318,7 +319,10 @@ namespace backend.Controllers
                             Unit = dd.Unit ?? string.Empty,
                             dd.Quantity,
                             dd.ReceivedQty,
-                            // ❌ Remark 不存在，已移除；如需备注，请添加字段或用其他字段替代
+                            
+                            unitPrice = dd.UnitPrice,
+                            amount = dd.Amount,
+
                         })
                         .ToList()
                 })
