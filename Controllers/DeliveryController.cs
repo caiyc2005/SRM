@@ -178,6 +178,65 @@ namespace backend.Controllers
         }
 
         /// <summary>
+        /// 供应商确认发货
+        /// </summary>
+        [HttpPost]
+        public async Task<IActionResult> DeliveryConfirm([FromBody] ConfirmDeliveryDto confirmDto)
+        {
+            if (string.IsNullOrWhiteSpace(confirmDto.OrderID))
+                return BadRequest(new { code = 400, message = "采购订单ID不能为空" });
+
+            if (string.IsNullOrWhiteSpace(confirmDto.SupplierID))
+                return BadRequest(new { code = 400, message = "供应商ID不能为空" });
+
+            var purchaseOrder = await _context.PurchaseOrders
+                .Include(o => o.Supplier)
+                .Include(o => o.DeliveryNotes)
+                .FirstOrDefaultAsync(o => o.OrderID == confirmDto.OrderID && !o.IsDel);
+
+            if (purchaseOrder == null)
+                return NotFound(new { code = 404, message = "采购订单不存在" });
+
+            if (purchaseOrder.SupplierID != confirmDto.SupplierID)
+                return BadRequest(new { code = 400, message = "供应商与订单不匹配" });
+
+            if (purchaseOrder.Status != 2)
+            {
+                string statusMsg = purchaseOrder.Status switch
+                {
+                    0 => "订单待确认，无需发货",
+                    1 => "订单已确认，请等待发货通知",
+                    3 => "订单已完成发货，无需重复操作",
+                    _ => "订单状态不允许发货"
+                };
+                return BadRequest(new { code = 400, message = statusMsg });
+            }
+
+            purchaseOrder.Status = 3;
+            purchaseOrder.UpdateTime = DateTime.Now;
+
+            foreach (var deliveryNote in purchaseOrder.DeliveryNotes?.Where(d => !d.IsDel && !d.Status) ?? new List<DeliveryNote>())
+            {
+                deliveryNote.DeliveryDate = DateTime.Now;
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                code = 200,
+                message = "发货确认成功",
+                data = new
+                {
+                    purchaseOrder.OrderID,
+                    purchaseOrder.OrderCode,
+                    purchaseOrder.Status,
+                    purchaseOrder.UpdateTime
+                }
+            });
+        }
+
+        /// <summary>
         /// 删除送货单（软删除）
         /// </summary>
         [HttpDelete("{noteId}")]
