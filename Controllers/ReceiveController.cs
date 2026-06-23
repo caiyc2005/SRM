@@ -280,6 +280,7 @@ namespace backend.Controllers
                         {
                             rd.ReceiveDetailID,
                             rd.MaterialCode,
+                            Spec = rd.Material.Spec ?? string.Empty,
                             MaterialName = rd.DeliveryDetail.MaterialName ?? string.Empty,
                             rd.PlanQty,
                             rd.ReceivedQty,
