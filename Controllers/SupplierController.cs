@@ -177,7 +177,7 @@ namespace backend.Controllers
                     RoleName = "supplier",
                     IsDel = false,
                     CreateTime = DateTime.Now,
-                    Memo = "供应商角色"
+                    Memo = "供应商"
                 };
                 _context.Roles.Add(supplierRole);
             }
