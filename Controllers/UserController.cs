@@ -93,7 +93,8 @@ namespace backend.Controllers
         /// <summary>
         /// 删除用户（软删除）
         /// </summary>
-        [HttpDelete("{id}")]
+        //[HttpDelete("{id}")]
+        [HttpPost]
         public async Task<ActionResult<ApiResult>> DeleteUser(string id)
         {
             var user = await _context.Users.FindAsync(id);
@@ -110,7 +111,7 @@ namespace backend.Controllers
         [HttpPut]
         public async Task<ActionResult<ApiResult>> UpdateUser([FromBody] UpdateUserRequest request)
         {
-            var user = await _context.Users.FindAsync(request.ID);
+            var user = await _context.Users.FindAsync(request.UserID);
             if (user == null)
                 return NotFound(ApiResult.Fail("用户不存在"));
 
@@ -196,9 +197,9 @@ namespace backend.Controllers
         }
 
         /// <summary>
-        /// 删除角色（软删除），角色内有用户时不可删除
+        /// 删除角色（物理删除），角色内有用户时不可删除
         /// </summary>
-        [HttpDelete("{id}")]
+        [HttpPost]
         public async Task<ActionResult<ApiResult>> DeleteRole(string id)
         {
             var role = await _context.Roles
@@ -211,11 +212,10 @@ namespace backend.Controllers
             if (role.UserRoles != null && role.UserRoles.Count != 0)
                 return BadRequest(ApiResult.Fail($"该角色下存在 {role.UserRoles.Count} 个用户，请先移除所有用户后再删除"));
 
-            role.IsDel = true;
-            role.UpdateTime = DateTime.Now;
+            _context.Roles.Remove(role);
             await _context.SaveChangesAsync();
 
-            return Ok(ApiResult.Ok("角色已删除（软删除）"));
+            return Ok(ApiResult.Ok("角色已删除"));
         }
 
         /// <summary>
@@ -280,33 +280,33 @@ namespace backend.Controllers
         [HttpPost]
         public async Task<ActionResult<ApiResult>> AddUserToRole([FromBody] UserRoleRequest request)
         {
-            if (string.IsNullOrWhiteSpace(request.UserID))
+            if (string.IsNullOrWhiteSpace(request.userID))
                 return BadRequest(ApiResult.Fail("用户ID不能为空"));
 
-            if (string.IsNullOrWhiteSpace(request.RoleID))
+            if (string.IsNullOrWhiteSpace(request.roleID))
                 return BadRequest(ApiResult.Fail("角色ID不能为空"));
 
             // 检查用户是否存在
-            var user = await _context.Users.FindAsync(request.UserID);
+            var user = await _context.Users.FindAsync(request.userID);
             if (user == null)
                 return NotFound(ApiResult.Fail("用户不存在"));
 
             // 检查角色是否存在
-            var role = await _context.Roles.FindAsync(request.RoleID);
+            var role = await _context.Roles.FindAsync(request.roleID);
             if (role == null)
                 return NotFound(ApiResult.Fail("角色不存在"));
 
             // 检查是否已存在关联
             var exists = await _context.UserRoles
-                .AnyAsync(ur => ur.UserID == request.UserID && ur.RoleID == request.RoleID);
+                .AnyAsync(ur => ur.UserID == request.userID && ur.RoleID == request.roleID);
             if (exists)
                 return Conflict(ApiResult.Fail("该用户已在此角色中"));
 
             var userRole = new UserRole
             {
                 UserRoleID = Guid.NewGuid().ToString(),
-                UserID = request.UserID,
-                RoleID = request.RoleID
+                UserID = request.userID,
+                RoleID = request.roleID
             };
 
             _context.UserRoles.Add(userRole);
@@ -321,14 +321,14 @@ namespace backend.Controllers
         [HttpDelete]
         public async Task<ActionResult<ApiResult>> RemoveUserFromRole([FromBody] UserRoleRequest request)
         {
-            if (string.IsNullOrWhiteSpace(request.UserID))
+            if (string.IsNullOrWhiteSpace(request.userID))
                 return BadRequest(ApiResult.Fail("用户ID不能为空"));
 
-            if (string.IsNullOrWhiteSpace(request.RoleID))
+            if (string.IsNullOrWhiteSpace(request.roleID))
                 return BadRequest(ApiResult.Fail("角色ID不能为空"));
 
             var userRole = await _context.UserRoles
-                .FirstOrDefaultAsync(ur => ur.UserID == request.UserID && ur.RoleID == request.RoleID);
+                .FirstOrDefaultAsync(ur => ur.UserID == request.userID && ur.RoleID == request.roleID);
 
             if (userRole == null)
                 return NotFound(ApiResult.Fail("该用户不在指定角色中"));

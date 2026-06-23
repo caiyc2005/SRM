@@ -50,18 +50,18 @@ namespace backend.Controllers
             }
 
             // 在查询前打印，看看到底传了什么
-            Console.WriteLine($"传入的 UserCode: '{request.UserCode}'");
-            Console.WriteLine($"长度: {request.UserCode.Length}");
+            //Console.WriteLine($"传入的 UserCode: '{request.UserCode}'");
+            //Console.WriteLine($"长度: {request.UserCode.Length}");
 
             // 看看数据库里有什么
             var allUsers = await _context.Users
                 .Select(u => new { u.UserCode, u.UserName })
                 .ToListAsync();
 
-            foreach (var u in allUsers)
-            {
-                Console.WriteLine($"数据库 UserCode: '{u.UserCode}'");
-            }
+            //foreach (var u in allUsers)
+            //{
+            //    Console.WriteLine($"数据库 UserCode: '{u.UserCode}'");
+            //}
 
             // 查找用户（包含角色导航）
             var user = await _context.Users

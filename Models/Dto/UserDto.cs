@@ -33,7 +33,7 @@ namespace backend.Models.Dto
 
     public class UpdateUserRequest
     {
-        public string ID { get; set; }
+        public string UserID { get; set; }
         public string UserCode { get; set; }
         public string UserName { get; set; }
         public string? Password { get; set; }
@@ -73,8 +73,8 @@ namespace backend.Models.Dto
     /// </summary>
     public class UserRoleRequest
     {
-        public string UserID { get; set; } = string.Empty;
-        public string RoleID { get; set; } = string.Empty;
+        public string userID { get; set; } = string.Empty;
+        public string roleID { get; set; } = string.Empty;
     }
 
     // UserRoleResponse
