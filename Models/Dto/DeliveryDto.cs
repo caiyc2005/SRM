@@ -39,6 +39,24 @@
         public List<DeliveryDetailQuantity>? DetailQuantities { get; set; }
     }
 
+    public class ConfirmDeliveryDto
+    {
+        /// <summary>
+        /// 采购订单ID（必填）
+        /// </summary>
+        public string OrderID { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 供应商ID（必填）
+        /// </summary>
+        public string SupplierID { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 供应商名称（可选）
+        /// </summary>
+        public string? SupplierName { get; set; }
+    }
+
     public class DeliveryDetailQuantity
     {
         /// <summary>
