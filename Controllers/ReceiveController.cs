@@ -109,8 +109,8 @@ namespace backend.Controllers
                     if (string.IsNullOrWhiteSpace(item.MaterialCode))
                         return BadRequest(new { code = 400, message = "物料编码不能为空" });
 
-                    if (item.ReceivedQty <= 0)
-                        return BadRequest(new { code = 400, message = "收料数量必须大于0" });
+                    if (item.ReceivedQty < 0)
+                        return BadRequest(new { code = 400, message = "收料数量不可小于0" });
 
                     if (!deliveryDetailDict.TryGetValue(item.MaterialCode, out var deliveryDetails))
                         return BadRequest(new { code = 400, message = $"送货单中不存在物料：{item.MaterialCode}" });
