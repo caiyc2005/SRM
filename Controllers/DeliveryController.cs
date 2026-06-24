@@ -289,7 +289,9 @@ namespace backend.Controllers
             if (deliveryGetDto.status.HasValue)
                 query = query.Where(d => d.Status == deliveryGetDto.status.Value);
 
-            var total = await query.CountAsync();
+            
+
+            
 
             // ✅ 修正：使用实体真实字段名 — DeliveryDetailID 和 MaterialName 等
             var allItems = await query
@@ -330,10 +332,26 @@ namespace backend.Controllers
                 })
                 .ToListAsync();
 
+            
+
+
+            //找出供应商表里是否有该用户ID
+            var supplier = await _context.Suppliers
+                .Where(u => u.UserID == deliveryGetDto.userID)
+                .FirstOrDefaultAsync();
+            //如果有，则返回的是供应商是它的送货单数据
+            if (supplier != null)
+            {
+                Console.WriteLine($"获取到供应商{supplier.SupplierID}的userID:{deliveryGetDto.userID}");
+                allItems = allItems.Where(s => s.SupplierID == supplier.SupplierID).ToList();
+            }
+
             var pagedItems = allItems
                 .Skip((deliveryGetDto.page - 1) * deliveryGetDto.pageSize)
                 .Take(deliveryGetDto.pageSize)
                 .ToList();
+
+            var total = allItems.Count;
 
             return Ok(new
             {

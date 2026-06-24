@@ -171,6 +171,10 @@ namespace backend.Controllers
                 newUserId = existingUser?.UserID;
             }
 
+            //关联UserID到Supplier供应商表里
+            supplier.UserID = newUserId;
+            await _context.SaveChangesAsync();
+
             var supplierRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName == "supplier" && !r.IsDel);
             if (supplierRole == null)
             {

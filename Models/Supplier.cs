@@ -38,6 +38,9 @@ namespace backend.Models
         [StringLength(50)]
         public string? Memo { get; set; }
 
+        [StringLength(50)]
+        public string? UserID { get; set; }
+
         // 导航属性
         public virtual ICollection<PurchaseOrder> PurchaseOrders { get; set; }
         public virtual ICollection<DeliveryNote> DeliveryNotes { get; set; }
