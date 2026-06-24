@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Security.Claims;
 
 namespace backend.Controllers
 {
@@ -48,6 +49,16 @@ namespace backend.Controllers
 
             if (purchaseOrder.Status != 1 && purchaseOrder.Status != 2)
                 return BadRequest(new { code = 400, message = "采购订单状态不允许生成送货单" });
+
+            // ========== 供应商权限校验：只能给自己创建送货单 ==========
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrWhiteSpace(currentUserId))
+            {
+                var currentSupplier = await _context.Suppliers
+                    .FirstOrDefaultAsync(s => s.UserID == currentUserId);
+                if (currentSupplier != null && currentSupplier.SupplierID != purchaseOrder.SupplierID)
+                    return BadRequest(new { code = 400, message = "只能给自己（当前供应商）创建送货单" });
+            }
 
             var dateStr = DateTime.Now.ToString("yyyyMMdd");
             
@@ -201,6 +212,16 @@ namespace backend.Controllers
             if (purchaseOrder.SupplierID != confirmDto.SupplierID)
                 return BadRequest(new { code = 400, message = "供应商与订单不匹配" });
 
+            // ========== 供应商权限校验：只能确认自己的发货 ==========
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrWhiteSpace(currentUserId))
+            {
+                var currentSupplier = await _context.Suppliers
+                    .FirstOrDefaultAsync(s => s.UserID == currentUserId);
+                if (currentSupplier != null && currentSupplier.SupplierID != confirmDto.SupplierID)
+                    return BadRequest(new { code = 400, message = "只能确认当前供应商的发货" });
+            }
+
             if (purchaseOrder.Status != 2)
             {
                 string statusMsg = purchaseOrder.Status switch
@@ -289,11 +310,19 @@ namespace backend.Controllers
             if (deliveryGetDto.status.HasValue)
                 query = query.Where(d => d.Status == deliveryGetDto.status.Value);
 
-            
+            // ========== 供应商权限校验：只能查看自己的送货单 ==========
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrWhiteSpace(currentUserId))
+            {
+                var currentSupplier = await _context.Suppliers
+                    .FirstOrDefaultAsync(s => s.UserID == currentUserId);
+                if (currentSupplier != null)
+                {
+                    Console.WriteLine($"当前供应商{currentSupplier.SupplierID}，筛选其送货单数据");
+                    query = query.Where(s => s.SupplierID == currentSupplier.SupplierID);
+                }
+            }
 
-            
-
-            // ✅ 修正：使用实体真实字段名 — DeliveryDetailID 和 MaterialName 等
             var allItems = await query
                 .OrderByDescending(d => d.CreatedTime)
                 .Select(d => new
@@ -331,20 +360,6 @@ namespace backend.Controllers
                         .ToList()
                 })
                 .ToListAsync();
-
-            
-
-
-            //找出供应商表里是否有该用户ID
-            var supplier = await _context.Suppliers
-                .Where(u => u.UserID == deliveryGetDto.userID)
-                .FirstOrDefaultAsync();
-            //如果有，则返回的是供应商是它的送货单数据
-            if (supplier != null)
-            {
-                Console.WriteLine($"获取到供应商{supplier.SupplierID}的userID:{deliveryGetDto.userID}");
-                allItems = allItems.Where(s => s.SupplierID == supplier.SupplierID).ToList();
-            }
 
             var pagedItems = allItems
                 .Skip((deliveryGetDto.page - 1) * deliveryGetDto.pageSize)
