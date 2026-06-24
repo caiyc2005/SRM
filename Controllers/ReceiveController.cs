@@ -118,9 +118,9 @@ namespace backend.Controllers
                     if (!materialDict.TryGetValue(item.MaterialCode, out var materialId))
                         return BadRequest(new { code = 400, message = $"物料不存在：{item.MaterialCode}" });
 
-                    var deliveryDetail = deliveryDetails.FirstOrDefault(dd => dd.ReceivedQty < dd.Quantity);
+                    var deliveryDetail = deliveryDetails.FirstOrDefault(dd => dd.ReceivedQty <= dd.Quantity);
                     if (deliveryDetail == null)
-                        return BadRequest(new { code = 400, message = $"物料 {item.MaterialCode} 已全部收料完成" });
+                        return BadRequest(new { code = 400, message = $"物料 {item.MaterialCode} 已全部完成收料，不可重复收料" });
 
                     var remainingQty = deliveryDetail.Quantity - deliveryDetail.ReceivedQty;
                     if (item.ReceivedQty > remainingQty)
