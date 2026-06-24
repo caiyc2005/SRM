@@ -13,7 +13,6 @@ namespace backend.Controllers
 {
     [ApiController]
     [Route("[controller]/[action]")]
-    [Authorize(Roles = "admin,supplier")]
     public class DeliveryController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -28,6 +27,7 @@ namespace backend.Controllers
         /// 根据采购订单生成送货单
         /// </summary>
         [HttpPost]
+        [Authorize(Roles = "admin,supplier")]
         public async Task<IActionResult> CreateDeliveryNote([FromBody] DeliveryDto deliveryDto)
         {
             if (string.IsNullOrWhiteSpace(deliveryDto.OrderID))
@@ -193,6 +193,7 @@ namespace backend.Controllers
         /// 供应商确认发货
         /// </summary>
         [HttpPost]
+        [Authorize(Roles = "admin,supplier")]
         public async Task<IActionResult> DeliveryConfirm(ConfirmDeliveryDto confirmDto)
         {
             if (string.IsNullOrWhiteSpace(confirmDto.OrderID))
@@ -262,6 +263,7 @@ namespace backend.Controllers
         /// 删除送货单（软删除）
         /// </summary>
         [HttpDelete("{noteId}")]
+        [Authorize(Roles = "admin,supplier")]
         public async Task<IActionResult> DeleteDeliveryNote(string noteId)
         {
             if (string.IsNullOrWhiteSpace(noteId))
@@ -297,6 +299,7 @@ namespace backend.Controllers
         /// 分页查询送货单列表（含明细，内存分页兼容低版本SQL）
         /// </summary>
         [HttpPost]
+        [Authorize(Roles = "admin,supplier,whclerk")]
         public async Task<IActionResult> GetDeliveryNote(DeliveryGetDto deliveryGetDto)
         {
             var query = _context.DeliveryNotes.Where(d => !d.IsDel).AsQueryable();

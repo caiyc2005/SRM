@@ -8,7 +8,7 @@ namespace backend.Controllers
 {
     [Route("[controller]/[action]")]
     [ApiController]
-    [Authorize(Roles = "admin")]
+    
     public class WarehouseController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -22,6 +22,7 @@ namespace backend.Controllers
         /// 获取所有仓库列表
         /// </summary>
         [HttpGet]
+        [Authorize(Roles = "admin,supplier,whclerk")]
         public async Task<ActionResult<ApiResult>> GetAllWarehouse()
         {
             var list = await _context.Warehouses
@@ -46,6 +47,7 @@ namespace backend.Controllers
         /// 新增仓库
         /// </summary>
         [HttpPost]
+        [Authorize(Roles = "admin")]
         public async Task<ActionResult<ApiResult>> CreateWarehouse([FromBody] CreateWarehouseDto dto)
         {
             if (string.IsNullOrWhiteSpace(dto.WareCode))
@@ -90,6 +92,7 @@ namespace backend.Controllers
         /// 修改仓库
         /// </summary>
         [HttpPost]
+        [Authorize(Roles = "admin")]
         public async Task<ActionResult<ApiResult>> UpdateWarehouse([FromBody] UpdateWarehouseDto dto)
         {
             if (string.IsNullOrWhiteSpace(dto.WareID))
@@ -134,6 +137,7 @@ namespace backend.Controllers
         /// 启用或禁用仓库
         /// </summary>
         [HttpPost]
+        [Authorize(Roles = "admin")]
         public async Task<ActionResult<ApiResult>> SetWarehouseStatus([FromBody] SetWarehouseStatusDto dto)
         {
             if (string.IsNullOrWhiteSpace(dto.WareID))

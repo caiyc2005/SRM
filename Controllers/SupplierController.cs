@@ -10,7 +10,7 @@ namespace backend.Controllers
 {
     [Route("[controller]/[action]")]
     [ApiController]
-    [Authorize(Roles = "admin")]
+    
     public class SupplierController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -27,6 +27,7 @@ namespace backend.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpPost]
+        [Authorize(Roles = "admin")]
         public async Task<ActionResult<ApiResult>> GetAllSuppliers()
         {
             var suppliers = await _context.Suppliers
@@ -50,6 +51,7 @@ namespace backend.Controllers
 
 
         [HttpPost]
+        [Authorize(Roles = "admin")]
         public async Task<ActionResult<ApiResult>> UpdateSupplier(UpdateSupplierDto updateSupplierDto)
         {
             // ========== 参数校验 ==========
@@ -88,6 +90,7 @@ namespace backend.Controllers
 
 
         [HttpPost]
+        [Authorize(Roles = "admin")]
         public async Task<ActionResult<ApiResult>> UpdateSupplierStatus(UpdateSupplierStatusDto dto)
         {
             //当前端单击停用的时候，已经传入isdel为true了
@@ -119,6 +122,7 @@ namespace backend.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "admin")]
         public async Task<ActionResult<ApiResult>> AddSupplier(AddSupplierDto addSupplierDto)
         {
             if (string.IsNullOrWhiteSpace(addSupplierDto.supplierCode))

@@ -10,7 +10,7 @@ namespace backend.Controllers
 {
     [Route("[controller]/[action]")]
     [ApiController]
-    [Authorize(Roles = "admin")]
+    
     public class ReceiveController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -20,6 +20,7 @@ namespace backend.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "admin,whclerk")]
         public async Task<IActionResult> CreateReceive([FromBody] ReceiveCreateDto receiveCreateDto)
         {
 
@@ -269,6 +270,7 @@ namespace backend.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "admin,whclerk")]
         public async Task<IActionResult> GetReceivesList([FromBody] ReceiveGetDto receiveGetDto)
         {
             var query = _context.ReceiveRecords.Where(r => !r.IsDel).AsQueryable();
