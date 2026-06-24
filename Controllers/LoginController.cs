@@ -30,7 +30,7 @@ namespace backend.Controllers
         [Route("/login")]
         [HttpPost]
         
-        public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest request)
+        public async Task<ActionResult<LoginResponse>> Login(LoginRequest request)
         {
             // 参数校验
             if (string.IsNullOrWhiteSpace(request.UserCode))
@@ -50,6 +50,7 @@ namespace backend.Controllers
                     Message = "密码不能为空"
                 });
             }
+            
 
             // 在查询前打印，看看到底传了什么
             //Console.WriteLine($"传入的 UserCode: '{request.UserCode}'");
@@ -69,14 +70,23 @@ namespace backend.Controllers
             var user = await _context.Users
                 .Include(u => u.UserRoles)
                 .ThenInclude(ur => ur.Role)
+                .Where(i => !i.IsDel)
                 .FirstOrDefaultAsync(u => u.UserCode == request.UserCode);//&& !u.IsDel);
+            //if (user.IsDel)
+            //{
+            //    return Ok(new LoginResponse
+            //    {
+            //        Success = false,
+            //        Message = "当前账号无权限登录",
+            //    });
+            //}
 
             if (user == null)
             {
-                return Unauthorized(new LoginResponse
+                return Ok(new LoginResponse
                 {
                     Success = false,
-                    Message = "账号或密码错误1"
+                    Message = "账号或密码错误1",
                 });
             }
 
