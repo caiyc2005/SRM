@@ -19,6 +19,8 @@
 
         public string? Memo { get; set; }
 
+        public string wareID { get; set; }
+
         public List<ReceiveDetailInput>? Details { get; set; }
     }
 

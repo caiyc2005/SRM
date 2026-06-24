@@ -22,6 +22,14 @@ namespace backend.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateReceive([FromBody] ReceiveCreateDto receiveCreateDto)
         {
+
+            var ware = await _context.Warehouses.Where(w => w.WareID == receiveCreateDto.wareID && !w.IsDel).FirstOrDefaultAsync();
+            Console.WriteLine($"获取到的仓库ID：{receiveCreateDto.wareID}");
+            if (ware == null)
+            {
+                return BadRequest(new { code = 400, message = "仓库已被禁用，不可收料" });
+            }
+
             if (string.IsNullOrWhiteSpace(receiveCreateDto.NoteCode))
                 return BadRequest(new { code = 400, message = "送货单号不能为空" });
 
@@ -192,8 +200,21 @@ namespace backend.Controllers
 
             foreach (var detail in receiveDetails)
             {
+
+                //var newInventory = new Inventory
+                //{
+                //    InventoryID = Guid.NewGuid().ToString(),
+                //    MaterialID = detail.MaterialID,
+                //    WareID = receiveCreateDto.wareID,
+                //    Qty = detail.ReceivedQty,
+                //    LastReceiveTime = DateTime.Now,
+                //    UpdateByID = receiveCreateDto.ReceiveUserID,
+                //    UpdateByName = receiveCreateDto.ReceiveUserName
+                //};
+                //_context.Inventories.Add(newInventory);
+
                 var existingInventory = await _context.Inventories
-                    .FirstOrDefaultAsync(i => i.MaterialID == detail.MaterialID && !i.WareID.Contains("TEMP"));
+                    .FirstOrDefaultAsync(i => i.MaterialID == detail.MaterialID && i.WareID==receiveCreateDto.wareID);//&& !i.WareID.Contains("TEMP"));
 
                 if (existingInventory != null)
                 {
@@ -204,7 +225,8 @@ namespace backend.Controllers
                 }
                 else
                 {
-                    var warehouse = await _context.Warehouses.FirstOrDefaultAsync(w => !w.IsDel);
+                    var warehouse = await _context.Warehouses.FirstOrDefaultAsync(w => !w.IsDel && w.WareID == receiveCreateDto.wareID);
+
                     if (warehouse != null)
                     {
                         var newInventory = new Inventory
