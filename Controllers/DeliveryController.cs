@@ -302,6 +302,7 @@ namespace backend.Controllers
                     OrderCode = d.PurchaseOrder.OrderCode,
                     d.SupplierID,
                     d.SupplierName,
+                    SupplierCode=d.Supplier.SupplierCode,
                     d.Status,
                     OrderStatus = d.PurchaseOrder.Status,//返回订单状态
                     d.ExpectedDate,
