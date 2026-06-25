@@ -177,6 +177,21 @@ namespace backend.Controllers
 
             //关联UserID到Supplier供应商表里
             supplier.UserID = newUserId;
+
+            // ========== 写入供应商用户关联（主账号） ==========
+            if (!string.IsNullOrEmpty(newUserId))
+            {
+                var supplierUser = new SupplierUser
+                {
+                    SupplierUserID = Guid.NewGuid().ToString(),
+                    SupplierID = supplier.SupplierID,
+                    UserID = newUserId,
+                    IsMainAccount = true,
+                    CreatedAt = DateTime.Now
+                };
+                _context.SupplierUsers.Add(supplierUser);
+            }
+
             await _context.SaveChangesAsync();
 
             var supplierRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName == "supplier" && !r.IsDel);
@@ -221,6 +236,109 @@ namespace backend.Controllers
                 isDel = supplier.IsDel,
                 //memo = supplier.Memo
             }));
+        }
+
+        /// <summary>
+        /// 创建供应商子账号
+        /// </summary>
+        [HttpPost]
+        [Authorize(Roles = "admin,supplier")]
+        public async Task<ActionResult<ApiResult>> CreateSubAccount(CreateSubAccountDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.SupplierID))
+                return BadRequest(ApiResult.Fail("供应商ID不能为空"));
+            if (string.IsNullOrWhiteSpace(dto.UserCode))
+                return BadRequest(ApiResult.Fail("账号不能为空"));
+            if (string.IsNullOrWhiteSpace(dto.UserName))
+                return BadRequest(ApiResult.Fail("用户名不能为空"));
+
+            var supplier = await _context.Suppliers
+                .FirstOrDefaultAsync(s => s.SupplierID == dto.SupplierID && !s.IsDel);
+            if (supplier == null)
+                return BadRequest(ApiResult.Fail("供应商不存在或已禁用"));
+
+            // ========== 校验账号唯一性 ==========
+            if (await _context.Users.AnyAsync(u => u.UserCode == dto.UserCode && !u.IsDel))
+                return Conflict(ApiResult.Fail("账号已存在"));
+
+            // ========== 创建用户 ==========
+            var user = new User
+            {
+                UserID = Guid.NewGuid().ToString(),
+                UserCode = dto.UserCode,
+                UserName = dto.UserName,
+                Password = _passwordService.HashPassword(dto.Password),
+                IsDel = false,
+                CreateTime = DateTime.Now,
+                Memo = dto.Memo
+            };
+            _context.Users.Add(user);
+
+            // ========== 绑定 supplier 角色 ==========
+            var supplierRole = await _context.Roles
+                .FirstOrDefaultAsync(r => r.RoleName == "supplier" && !r.IsDel);
+            if (supplierRole != null)
+            {
+                _context.UserRoles.Add(new UserRole
+                {
+                    UserRoleID = Guid.NewGuid().ToString(),
+                    UserID = user.UserID,
+                    RoleID = supplierRole.RoleID
+                });
+            }
+
+            // ========== 写入供应商用户关联（子账号） ==========
+            _context.SupplierUsers.Add(new SupplierUser
+            {
+                SupplierUserID = Guid.NewGuid().ToString(),
+                SupplierID = supplier.SupplierID,
+                UserID = user.UserID,
+                IsMainAccount = false,
+                CreatedAt = DateTime.Now
+            });
+
+            await _context.SaveChangesAsync();
+
+            return Ok(ApiResult.Ok("子账号创建成功", new
+            {
+                user.UserID,
+                user.UserCode,
+                user.UserName
+            }));
+        }
+
+        /// <summary>
+        /// 查询供应商下的所有关联用户
+        /// </summary>
+        [HttpPost]
+        [Authorize(Roles = "admin,supplier")]
+        public async Task<ActionResult<ApiResult>> GetSupplierUsers([FromBody] Dictionary<string, string> body)
+        {
+            body.TryGetValue("supplierID", out var supplierID);
+
+            if (string.IsNullOrWhiteSpace(supplierID))
+                return BadRequest(ApiResult.Fail("供应商ID不能为空"));
+
+            var users = await _context.SupplierUsers
+                .Where(su => su.SupplierID == supplierID)
+                .Join(_context.Users,
+                    su => su.UserID,
+                    u => u.UserID,
+                    (su, u) => new SupplierUserItemDto
+                    {
+                        SupplierUserID = su.SupplierUserID,
+                        UserID = su.UserID,
+                        UserCode = u.UserCode,
+                        UserName = u.UserName,
+                        IsMainAccount = su.IsMainAccount,
+                        CreatedAt = su.CreatedAt,
+                        Memo = u.Memo
+                    })
+                .OrderByDescending(u => u.IsMainAccount)
+                .ThenBy(u => u.CreatedAt)
+                .ToListAsync();
+
+            return Ok(ApiResult.Ok("查询成功", users));
         }
     }
 }

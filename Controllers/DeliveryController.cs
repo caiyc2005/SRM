@@ -87,8 +87,8 @@ namespace backend.Controllers
             var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (!string.IsNullOrWhiteSpace(currentUserId))
             {
-                var currentSupplier = await _context.Suppliers
-                    .FirstOrDefaultAsync(s => s.UserID == currentUserId);
+                var currentSupplier = await _context.SupplierUsers
+                    .FirstOrDefaultAsync(su => su.UserID == currentUserId);
                 if (currentSupplier != null && currentSupplier.SupplierID != distinctSupplierIDs[0])
                     return BadRequest(new { code = 400, message = "只能给自己（当前供应商）创建送货单" });
             }
@@ -259,8 +259,8 @@ namespace backend.Controllers
             // ========== 供应商权限校验 ==========
             if (!string.IsNullOrWhiteSpace(currentUserId))
             {
-                var currentSupplier = await _context.Suppliers
-                    .FirstOrDefaultAsync(s => s.UserID == currentUserId);
+                var currentSupplier = await _context.SupplierUsers
+                    .FirstOrDefaultAsync(su => su.UserID == currentUserId);
                 if (currentSupplier != null && currentSupplier.SupplierID != deliveryNote.SupplierID)
                     return BadRequest(new { code = 400, message = "只能确认当前供应商的发货" });
             }
@@ -405,8 +405,8 @@ namespace backend.Controllers
             var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (!string.IsNullOrWhiteSpace(currentUserId))
             {
-                var currentSupplier = await _context.Suppliers
-                    .FirstOrDefaultAsync(s => s.UserID == currentUserId);
+                var currentSupplier = await _context.SupplierUsers
+                    .FirstOrDefaultAsync(su => su.UserID == currentUserId);
                 if (currentSupplier != null)
                 {
                     Console.WriteLine($"当前供应商{currentSupplier.SupplierID}，筛选其送货单数据");

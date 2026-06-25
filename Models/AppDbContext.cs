@@ -22,6 +22,7 @@ namespace backend.Models
         public DbSet<ReceiveRecord> ReceiveRecords { get; set; }
         public DbSet<ReceiveDetail> ReceiveDetails { get; set; }
         public DbSet<Inventory> Inventories { get; set; }
+        public DbSet<SupplierUser> SupplierUsers { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -72,6 +73,28 @@ namespace backend.Models
             {
                 entity.ToTable("Supplier");
                 entity.HasKey(e => e.SupplierID);
+            });
+
+            // =====================================
+            // SupplierUser 配置
+            // =====================================
+            modelBuilder.Entity<SupplierUser>(entity =>
+            {
+                entity.ToTable("SupplierUser");
+                entity.HasKey(e => e.SupplierUserID);
+
+                entity.HasOne(e => e.Supplier)
+                      .WithMany()
+                      .HasForeignKey(e => e.SupplierID)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.User)
+                      .WithMany()
+                      .HasForeignKey(e => e.UserID)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                // 一个供应商下同一用户只能有一条记录
+                entity.HasIndex(e => new { e.SupplierID, e.UserID }).IsUnique();
             });
 
             // =====================================

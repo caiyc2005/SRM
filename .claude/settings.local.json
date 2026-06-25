@@ -12,7 +12,14 @@
       "Bash(handle.exe -a \"D:\\\\SRM\\\\backend\\\\bin\\\\Debug\\\\net10.0\\\\backend.exe\")",
       "Bash(taskkill /f /pid 18512)",
       "Bash(powershell *)",
-      "Bash(taskkill //F //IM backend.exe)"
+      "Bash(taskkill //F //IM backend.exe)",
+      "Bash(grep -A5 \"DefaultConnection\" appsettings.json)",
+      "Bash(grep -A5 \"DefaultConnection\" appsettings.Development.json)",
+      "Bash(sqlcmd -S . -d SRM -Q \"SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Supplier' AND COLUMN_NAME = 'SupplierID'\" -C)",
+      "Bash(sqlcmd -S . -d SRM -Q \"SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'User' AND COLUMN_NAME = 'UserID'\" -C)",
+      "Bash(taskkill /F /PID 32088)",
+      "Bash(taskkill //PID 32088 //F)",
+      "Bash(sqlcmd -S . -d SRM -Q \"SELECT COUNT\\(*\\) AS SupplierUserCount FROM SupplierUser; SELECT su.SupplierID, u.UserCode, u.UserName, su.IsMainAccount FROM SupplierUser su JOIN [User] u ON u.UserID = su.UserID\" -C)"
     ]
   }
 }
