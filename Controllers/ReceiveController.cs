@@ -224,43 +224,43 @@ namespace backend.Controllers
                 }
             }
 
-            foreach (var detail in receiveDetails)
+            // ========== 按 (WareID, MaterialID) 聚合收料数量（排除 0，避免重复操作库存） ==========
+            var inventoryAggregates = receiveDetails
+                .GroupBy(d => d.MaterialID)
+                .Select(g => new
+                {
+                    MaterialID = g.Key,
+                    WareID = receiveCreateDto.wareID,
+                    TotalQty = g.Sum(d => d.ReceivedQty)
+                })
+                .Where(a => a.TotalQty != 0)
+                .ToList();
+
+            foreach (var agg in inventoryAggregates)
             {
-
-                //var newInventory = new Inventory
-                //{
-                //    InventoryID = Guid.NewGuid().ToString(),
-                //    MaterialID = detail.MaterialID,
-                //    WareID = receiveCreateDto.wareID,
-                //    Qty = detail.ReceivedQty,
-                //    LastReceiveTime = DateTime.Now,
-                //    UpdateByID = receiveCreateDto.ReceiveUserID,
-                //    UpdateByName = receiveCreateDto.ReceiveUserName
-                //};
-                //_context.Inventories.Add(newInventory);
-
                 var existingInventory = await _context.Inventories
-                    .FirstOrDefaultAsync(i => i.MaterialID == detail.MaterialID && i.WareID==receiveCreateDto.wareID);//&& !i.WareID.Contains("TEMP"));
+                    .FirstOrDefaultAsync(i => i.MaterialID == agg.MaterialID && i.WareID == agg.WareID);
 
                 if (existingInventory != null)
                 {
-                    existingInventory.Qty += detail.ReceivedQty;
+                    existingInventory.Qty += agg.TotalQty;
                     existingInventory.LastReceiveTime = DateTime.Now;
                     existingInventory.UpdateByID = receiveCreateDto.ReceiveUserID;
                     existingInventory.UpdateByName = receiveCreateDto.ReceiveUserName;
                 }
                 else
                 {
-                    var warehouse = await _context.Warehouses.FirstOrDefaultAsync(w => !w.IsDel && w.WareID == receiveCreateDto.wareID);
+                    var warehouse = await _context.Warehouses
+                        .FirstOrDefaultAsync(w => !w.IsDel && w.WareID == receiveCreateDto.wareID);
 
                     if (warehouse != null)
                     {
                         var newInventory = new Inventory
                         {
                             InventoryID = Guid.NewGuid().ToString(),
-                            MaterialID = detail.MaterialID,
+                            MaterialID = agg.MaterialID,
                             WareID = warehouse.WareID,
-                            Qty = detail.ReceivedQty,
+                            Qty = agg.TotalQty,
                             LastReceiveTime = DateTime.Now,
                             UpdateByID = receiveCreateDto.ReceiveUserID,
                             UpdateByName = receiveCreateDto.ReceiveUserName
