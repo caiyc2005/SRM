@@ -20,8 +20,9 @@ namespace backend.Models.Dto
 
     public class ConfirmOrderDto
     {
-        public string OrderID { get; set; } = string.Empty;
-        public List<string>? MaterialCodes { get; set; }
+        public List<string> OrderDetailIDs { get; set; } = new List<string>();
+
+
     }
 
     /// <summary>
