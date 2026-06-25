@@ -59,6 +59,10 @@
         /// 供应商名称（可选）
         /// </summary>
         public string? SupplierName { get; set; }
+        /// <summary>
+        /// 预计送达时间（可选）
+        /// </summary>
+        public DateTime? ExpectedDeliveryDate { get; set; }
     }
 
     public class DeliveryDetailQuantity

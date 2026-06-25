@@ -241,6 +241,10 @@ namespace backend.Controllers
             foreach (var deliveryNote in purchaseOrder.DeliveryNotes?.Where(d => !d.IsDel && !d.Status) ?? new List<DeliveryNote>())
             {
                 deliveryNote.DeliveryDate = DateTime.Now;
+                if (confirmDto.ExpectedDeliveryDate.HasValue)
+                {
+                    deliveryNote.ExpectedDate = confirmDto.ExpectedDeliveryDate;
+                }
             }
 
             await _context.SaveChangesAsync();
