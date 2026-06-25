@@ -179,7 +179,7 @@ namespace backend.Controllers
             var queryable = _context.OrderDetails
                 .Include(od => od.PurchaseOrder)
                 .Include(od => od.Material)
-                .Where(od => !od.PurchaseOrder.IsDel && od.IsConfirm);
+                .Where(od => !od.PurchaseOrder.IsDel && od.IsConfirm==1);//判断订单为1
 
             // 按采购订单编号过滤
             if (!string.IsNullOrWhiteSpace(detailsDto.OrderCode))
@@ -392,7 +392,7 @@ namespace backend.Controllers
 
             var orderDetails = await _context.OrderDetails
                 .Include(od => od.PurchaseOrder)
-                .Where(od => dto.orderDetailID.Contains(od.OrderDetailID) && !od.IsConfirm)
+                .Where(od => dto.orderDetailID.Contains(od.OrderDetailID) && od.IsConfirm==0)
                 .ToListAsync();
 
             if (orderDetails.Count == 0)
@@ -405,12 +405,10 @@ namespace backend.Controllers
             var order = orderDetails.First().PurchaseOrder;
             if (order == null || order.IsDel)
                 return NotFound(ApiResult.Fail("订单不存在"));
-            if (orderDetails.FirstOrDefault().IsConfirm)
+            if (orderDetails.FirstOrDefault().IsConfirm==1)
             {
                 return BadRequest(ApiResult.Fail("该订单下的此物料不允许再次确认"));
             }
-            //if (order.Status != 0)
-            //    return BadRequest(ApiResult.Fail("订单状态不允许确认"));
 
             var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             var currentUserName = User.FindFirst(ClaimTypes.Name)?.Value;
@@ -418,10 +416,12 @@ namespace backend.Controllers
             List<string> confirmedMaterialCodes = new List<string>();
             foreach (var detail in orderDetails)
             {
-                detail.IsConfirm = true;
+                detail.IsConfirm = 1;
                 confirmedMaterialCodes.Add(detail.MaterialCode);
             }
-                bool allConfirmed = order.OrderDetails.All(od => od.IsConfirm);
+
+            //如果所有的订单明细表里的都已经是已确认或者其他状态了，采购订单才会被确认为已确认。
+            bool allConfirmed = order.OrderDetails.All(od => od.IsConfirm>=1);
             if (allConfirmed)
             {
                 order.Status = 1;

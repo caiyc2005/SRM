@@ -196,6 +196,12 @@ namespace backend.Controllers
 
             _context.DeliveryDetails.AddRange(deliveryDetails);
 
+            // ========== 更新订单明细状态（2 = 已生成送货单） ==========
+            foreach (var od in orderDetails)
+            {
+                od.IsConfirm = 2;
+            }
+
             // ========== 更新涉及到的采购订单状态（1→2 待发货） ==========
             var ordersToUpdate = orders.Where(o => o.Status == 1).ToList();
             foreach (var order in ordersToUpdate)
