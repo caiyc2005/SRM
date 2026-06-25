@@ -45,15 +45,17 @@
 
     public class ConfirmDeliveryDto
     {
-        /// <summary>
-        /// 采购订单ID（必填）
-        /// </summary>
-        public string OrderID { get; set; } = string.Empty;
+        ///// <summary>
+        ///// 采购订单ID（必填）
+        ///// </summary>
+        //public string OrderID { get; set; } = string.Empty;
 
-        /// <summary>
-        /// 供应商ID（必填）
-        /// </summary>
-        public string SupplierID { get; set; } = string.Empty;
+        ///// <summary>
+        ///// 供应商ID（必填）
+        ///// </summary>
+        //public string SupplierID { get; set; } = string.Empty;
+
+
 
         /// <summary>
         /// 供应商名称（可选）
@@ -68,9 +70,9 @@
     public class DeliveryDetailQuantity
     {
         /// <summary>
-        /// 物料编码（必填）
+        /// 订单明细ID（必填，对应 OrderDetailID）
         /// </summary>
-        public string MaterialCode { get; set; } = string.Empty;
+        public string OrderDetailID { get; set; } = string.Empty;
 
         /// <summary>
         /// 物料名称（可选，前端传入时优先使用）

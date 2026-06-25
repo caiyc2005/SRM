@@ -18,6 +18,10 @@ namespace backend.Models
 
         [StringLength(50)]
         [Required]
+        public string OrderDetailID { get; set; }
+
+        [StringLength(50)]
+        [Required]
         public string MaterialCode { get; set; } = string.Empty;
 
         [StringLength(50)]
@@ -45,6 +49,9 @@ namespace backend.Models
 
         [ForeignKey(nameof(NoteID))]
         public virtual DeliveryNote? DeliveryNote { get; set; }
+
+        [ForeignKey(nameof(OrderDetailID))]
+        public virtual OrderDetail OrderDetail { get; set; }
 
         public virtual ICollection<ReceiveDetail>? ReceiveDetails { get; set; }
     }

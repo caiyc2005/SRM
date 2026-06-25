@@ -66,7 +66,6 @@ namespace backend.Models
         // 导航属性：一个采购订单有多个明细
         public virtual ICollection<OrderDetail> OrderDetails { get; set; }
 
-        // 导航属性：一个采购订单有多个送货单
-        public virtual ICollection<DeliveryNote> DeliveryNotes { get; set; }
+        // 一个采购订单的物料可通过送货明细关联到多个送货单（DeliveryDetail.OrderDetailID → OrderDetail.OrderID）
     }
 }

@@ -16,7 +16,8 @@ namespace backend.Models
 
         [StringLength(50)]
         [Required]
-        public string MaterialCode { get; set; }
+        [Column("MaterialID")]
+        public string MaterialID { get; set; }
 
         [Column(TypeName = "decimal(18,4)")]
         [Required]
@@ -35,7 +36,7 @@ namespace backend.Models
         public virtual PurchaseOrder PurchaseOrder { get; set; }
 
         // 外键关联：物料
-        [ForeignKey(nameof(MaterialCode))]
+        [ForeignKey(nameof(MaterialID))]
         public virtual Material Material { get; set; }
     }
 }

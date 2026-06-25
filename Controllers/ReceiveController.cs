@@ -42,8 +42,9 @@ namespace backend.Controllers
 
             var deliveryNote = await _context.DeliveryNotes
                 .Include(d => d.DeliveryDetails)
+                    .ThenInclude(dd => dd.OrderDetail)
+                        .ThenInclude(od => od.PurchaseOrder)
                 .Include(d => d.Supplier)
-                .Include(d => d.PurchaseOrder)
                 .FirstOrDefaultAsync(d => d.NoteCode == receiveCreateDto.NoteCode && !d.IsDel);
 
             if (deliveryNote == null)
@@ -144,7 +145,7 @@ namespace backend.Controllers
                         ReceiveID = receiveRecord.ReceiveID,
                         DeliveryDetailID = deliveryDetail.DeliveryDetailID,
                         MaterialID = materialId,
-                        MaterialCode = deliveryDetail.MaterialCode,
+                        MaterialCode = item.MaterialCode,
                         PlanQty = deliveryDetail.Quantity,
                         ReceivedQty = item.ReceivedQty,
                         DiffQty = deliveryDetail.Quantity - item.ReceivedQty,
@@ -191,12 +192,22 @@ namespace backend.Controllers
                 deliveryNote.DeliveryDate = DateTime.Now;
             }
 
-            if (isFullyReceived && deliveryNote.PurchaseOrder != null)
+            // 全部收料 → 更新关联采购订单状态为 4（已收货）
+            if (isFullyReceived)
             {
-                deliveryNote.PurchaseOrder.Status = 4;
-                deliveryNote.PurchaseOrder.UpdateByID = receiveCreateDto.ReceiveUserID;
-                deliveryNote.PurchaseOrder.UpdateByName = receiveCreateDto.ReceiveUserName;
-                deliveryNote.PurchaseOrder.UpdateTime = DateTime.Now;
+                var orders = deliveryNote.DeliveryDetails
+                    .Where(dd => !dd.IsDel && dd.OrderDetail?.PurchaseOrder != null)
+                    .Select(dd => dd.OrderDetail.PurchaseOrder)
+                    .DistinctBy(o => o.OrderID)
+                    .ToList();
+
+                foreach (var order in orders)
+                {
+                    order.Status = 4;
+                    order.UpdateByID = receiveCreateDto.ReceiveUserID;
+                    order.UpdateByName = receiveCreateDto.ReceiveUserName;
+                    order.UpdateTime = DateTime.Now;
+                }
             }
 
             foreach (var detail in receiveDetails)
@@ -294,7 +305,11 @@ namespace backend.Controllers
                     r.ReceiveCode,
                     r.NoteID,
                     NoteCode = r.DeliveryNote.NoteCode,
-                    OrderCode = r.DeliveryNote.PurchaseOrder.OrderCode,
+                    OrderCodes = r.DeliveryNote.DeliveryDetails
+                        .Where(dd => !dd.IsDel && dd.OrderDetail != null)
+                        .Select(dd => dd.OrderDetail.PurchaseOrder.OrderCode)
+                        .Distinct()
+                        .ToList(),
                     r.SupplierID,
                     r.SupplierName,
                     r.ReceiveUserID,

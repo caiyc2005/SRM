@@ -83,7 +83,7 @@ namespace backend.Controllers
                 {
                     OrderDetailID = Guid.NewGuid().ToString(),
                     OrderID = order.OrderID,
-                    MaterialCode = material.MaterialCode,
+                    MaterialID = material.MaterialID,
                     Qty = item.Qty,
                     UnitPrice = item.UnitPrice,
                     Amount = item.Qty * (item.UnitPrice ?? 0)
@@ -148,7 +148,7 @@ namespace backend.Controllers
                     //OrderStatusName = GetStatusName(od.PurchaseOrder.Status),
                     OrderCreateTime = od.PurchaseOrder.CreateTime,
                     // 物料信息
-                    od.MaterialCode,
+                    MaterialCode = od.Material.MaterialCode,
                     MaterialName = od.Material.MaterialName,
                     Spec = od.Material.Spec,
                     Unit = od.Material.Unit,
@@ -214,7 +214,7 @@ namespace backend.Controllers
                     //OrderStatusName = GetStatusName(od.PurchaseOrder.Status),
                     OrderCreateTime = od.PurchaseOrder.CreateTime,
                     // 物料信息
-                    od.MaterialCode,
+                    MaterialCode = od.Material.MaterialCode,
                     MaterialName = od.Material.MaterialName,
                     Spec = od.Material.Spec,
                     Unit = od.Material.Unit,
@@ -316,14 +316,17 @@ namespace backend.Controllers
                     o.CreateTime,
                     o.UpdateTime,
                     o.Memo,
-                    NoteCode = o.DeliveryNotes.Where(dn => !dn.IsDel).Select(dn => dn.NoteCode).FirstOrDefault() ?? "",
+                    NoteCode = _context.DeliveryDetails
+                        .Where(dd => !dd.IsDel && dd.OrderDetail.OrderID == o.OrderID)
+                        .Select(dd => dd.DeliveryNote.NoteCode)
+                        .FirstOrDefault() ?? "",
                     OrderDetails = o.OrderDetails.Select(d => new
                     {
                         d.OrderDetailID,
-                        d.MaterialCode,
-                        MaterialName = _context.Materials.Where(m => m.MaterialCode == d.MaterialCode).Select(m => m.MaterialName).FirstOrDefault(),
-                        Spec = _context.Materials.Where(m => m.MaterialCode == d.MaterialCode).Select(m => m.Spec).FirstOrDefault(),
-                        Unit = _context.Materials.Where(m => m.MaterialCode == d.MaterialCode).Select(m => m.Unit).FirstOrDefault(),
+                        d.MaterialID,
+                        MaterialName = _context.Materials.Where(m => m.MaterialCode == d.MaterialID).Select(m => m.MaterialName).FirstOrDefault(),
+                        Spec = _context.Materials.Where(m => m.MaterialCode == d.MaterialID).Select(m => m.Spec).FirstOrDefault(),
+                        Unit = _context.Materials.Where(m => m.MaterialCode == d.MaterialID).Select(m => m.Unit).FirstOrDefault(),
                         d.Qty,
                         d.UnitPrice,
                         d.Amount,
@@ -354,7 +357,8 @@ namespace backend.Controllers
                     OrderDetails = o.OrderDetails.Select(d => new
                     {
                         d.OrderDetailID,
-                        d.MaterialCode,
+                        d.MaterialID,
+                        //d.MaterialCode,
                         d.MaterialName,
                         d.Spec,
                         d.Unit,
@@ -413,11 +417,11 @@ namespace backend.Controllers
             var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             var currentUserName = User.FindFirst(ClaimTypes.Name)?.Value;
 
-            List<string> confirmedMaterialCodes = new List<string>();
+            List<string> confirmedMaterialIDs = new List<string>();
             foreach (var detail in orderDetails)
             {
                 detail.IsConfirm = 1;
-                confirmedMaterialCodes.Add(detail.MaterialCode);
+                confirmedMaterialIDs.Add(detail.MaterialID);
             }
 
             //如果所有的订单明细表里的都已经是已确认或者其他状态了，采购订单才会被确认为已确认。
@@ -440,7 +444,7 @@ namespace backend.Controllers
                 order.OrderCode,
                 order.Status,
                 //StatusName = GetStatusName(order.Status),
-                ConfirmedMaterialCodes = confirmedMaterialCodes,
+                ConfirmedMaterialIDs = confirmedMaterialIDs,
                 IsAllConfirmed = allConfirmed
             }));
         }

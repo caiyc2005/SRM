@@ -16,10 +16,6 @@ namespace backend.Models
 
         [StringLength(50)]
         [Required]
-        public string OrderID { get; set; }
-
-        [StringLength(50)]
-        [Required]
         public string SupplierID { get; set; }
 
         [StringLength(50)]
@@ -48,10 +44,7 @@ namespace backend.Models
         [Required]
         public bool IsDel { get; set; }
 
-        // 外键关联：一个送货单属于一个采购订单
-        [ForeignKey(nameof(OrderID))]
-        public virtual PurchaseOrder PurchaseOrder { get; set; }
-
+        // 一个送货单可能包含多个采购订单的物料，订单关联通过 DeliveryDetail.OrderDetailID 追溯
         // 外键关联：一个送货单属于一个供应商
         [ForeignKey(nameof(SupplierID))]
         public virtual Supplier Supplier { get; set; }

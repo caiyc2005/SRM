@@ -127,7 +127,7 @@ namespace backend.Models
                 // OrderDetail -> Material（通过 MaterialCode，关联 Material.MaterialCode 而非主键 MaterialID）
                 entity.HasOne(e => e.Material)
                       .WithMany()
-                      .HasForeignKey(e => e.MaterialCode)
+                      .HasForeignKey(e => e.MaterialID)
                       .HasPrincipalKey(e => e.MaterialCode)
                       .OnDelete(DeleteBehavior.Restrict);
             });
