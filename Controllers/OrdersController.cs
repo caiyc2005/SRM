@@ -169,6 +169,73 @@ namespace backend.Controllers
             }));
         }
 
+
+
+        [HttpPost]
+        // 获取已确认的采购订单
+        public async Task<ActionResult<ApiResult>> GetConfirmedOrders(OrderDetailsDto detailsDto)
+        {
+            // 从 OrderDetails 为主表，关联 PurchaseOrder 和 Material
+            var queryable = _context.OrderDetails
+                .Include(od => od.PurchaseOrder)
+                .Include(od => od.Material)
+                .Where(od => !od.PurchaseOrder.IsDel && od.IsConfirm);
+
+            // 按采购订单编号过滤
+            if (!string.IsNullOrWhiteSpace(detailsDto.OrderCode))
+                queryable = queryable.Where(od => od.PurchaseOrder.OrderCode.Contains(detailsDto.OrderCode));
+
+            // 按供应商ID过滤
+            if (!string.IsNullOrWhiteSpace(detailsDto.SupplierID))
+                queryable = queryable.Where(od => od.PurchaseOrder.SupplierID == detailsDto.SupplierID);
+
+            // 按订单明细状态过滤
+            //if (detailsDto.Status.HasValue)
+            //    queryable = queryable.Where(od => od.PurchaseOrder.Status == detailsDto.Status.Value);
+
+            // 统计总数
+            var total = await queryable.CountAsync();
+
+            // 分页查询
+            var list = await queryable
+                .OrderByDescending(od => od.PurchaseOrder.CreateTime)//先以创建时间排序desc
+                .ThenBy(od => od.OrderDetailID)//再以订单明细ID排序
+                .Skip((detailsDto.PageIndex - 1) * detailsDto.PageSize)
+                .Take(detailsDto.PageSize)
+                .Select(od => new
+                {
+                    od.OrderDetailID,
+                    od.OrderID,
+                    // 采购订单信息
+                    OrderCode = od.PurchaseOrder.OrderCode,
+                    SupplierID = od.PurchaseOrder.SupplierID,
+                    SupplierName = od.PurchaseOrder.SupplierName,
+                    OrderStatus = od.PurchaseOrder.Status,
+                    //OrderStatusName = GetStatusName(od.PurchaseOrder.Status),
+                    OrderCreateTime = od.PurchaseOrder.CreateTime,
+                    // 物料信息
+                    od.MaterialCode,
+                    MaterialName = od.Material.MaterialName,
+                    Spec = od.Material.Spec,
+                    Unit = od.Material.Unit,
+                    // 明细信息
+                    od.Qty,
+                    od.UnitPrice,
+                    od.Amount,
+                    od.IsConfirm
+                })//子查询
+                .ToListAsync();
+
+            return Ok(ApiResult.Ok("查询订单明细成功", new
+            {
+                Total = total,
+                PageIndex = detailsDto.PageIndex,
+                PageSize = detailsDto.PageSize,
+                List = list
+            }));
+        }
+
+
         /// <summary>
         /// 采购订单查询
         /// </summary>
@@ -307,6 +374,9 @@ namespace backend.Controllers
                 List = paginatedOrders
             }));
         }
+
+
+        
 
         /// <summary>
         /// 确认采购订单（支持按物料分批确认）

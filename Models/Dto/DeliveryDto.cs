@@ -16,9 +16,9 @@
     public class DeliveryDto
     {
         /// <summary>
-        /// 采购订单ID（必填）
+        /// 订单明细ID列表（支持跨采购订单选择部分物料）
         /// </summary>
-        public string OrderID { get; set; } = string.Empty;
+        public List<string> OrderDetailIDs { get; set; } = new List<string>();
 
         /// <summary>
         /// 预计到货日期（可选）

@@ -24,14 +24,15 @@ namespace backend.Controllers
 
 
         /// <summary>
-        /// 根据采购订单生成送货单
+        /// 根据订单明细ID列表创建送货单（支持跨采购订单合并送货）
         /// </summary>
         [HttpPost]
         [Authorize(Roles = "admin,supplier")]
-        public async Task<IActionResult> CreateDeliveryNote([FromBody] DeliveryDto deliveryDto)
+        public async Task<IActionResult> CreateDeliveryNote(DeliveryDto deliveryDto)
         {
-            if (string.IsNullOrWhiteSpace(deliveryDto.OrderID))
-                return BadRequest(new { code = 400, message = "采购订单ID不能为空" });
+            // ========== 参数校验 ==========
+            if (deliveryDto.OrderDetailIDs == null || deliveryDto.OrderDetailIDs.Count == 0)
+                return BadRequest(new { code = 400, message = "订单明细ID不能为空" });
 
             if (string.IsNullOrWhiteSpace(deliveryDto.CreateByID))
                 return BadRequest(new { code = 400, message = "创建人ID不能为空" });
@@ -39,16 +40,42 @@ namespace backend.Controllers
             if (string.IsNullOrWhiteSpace(deliveryDto.CreateByName))
                 return BadRequest(new { code = 400, message = "创建人姓名不能为空" });
 
-            var purchaseOrder = await _context.PurchaseOrders
-                .Include(o => o.OrderDetails)
-                .Include(o => o.Supplier)
-                .FirstOrDefaultAsync(o => o.OrderID == deliveryDto.OrderID && !o.IsDel);
+            // ========== 加载所有订单明细及对应采购订单 ==========
+            var orderDetails = await _context.OrderDetails
+                .Include(od => od.PurchaseOrder)
+                .Where(od => deliveryDto.OrderDetailIDs.Contains(od.OrderDetailID))
+                .ToListAsync();
 
-            if (purchaseOrder == null)
-                return NotFound(new { code = 404, message = "采购订单不存在" });
+            if (orderDetails.Count != deliveryDto.OrderDetailIDs.Count)
+            {
+                var foundIds = orderDetails.Select(od => od.OrderDetailID).ToHashSet();
+                var missingIds = deliveryDto.OrderDetailIDs.Where(id => !foundIds.Contains(id)).ToList();
+                return BadRequest(new { code = 400, message = $"以下订单明细不存在：{string.Join(", ", missingIds)}" });
+            }
 
-            if (purchaseOrder.Status != 1 && purchaseOrder.Status != 2)
-                return BadRequest(new { code = 400, message = "采购订单状态不允许生成送货单" });
+            // ========== 校验：所有明细必须属于同一个供应商 ==========
+            var distinctSupplierIDs = orderDetails
+                .Select(od => od.PurchaseOrder.SupplierID)
+                .Distinct()
+                .ToList();
+
+            if (distinctSupplierIDs.Count > 1)
+                return BadRequest(new { code = 400, message = "不能同时为不同供应商的订单创建送货单" });
+
+            // ========== 校验：各采购订单状态是否允许生成送货单 ==========
+            var orders = orderDetails
+                .Select(od => od.PurchaseOrder)
+                .DistinctBy(o => o.OrderID)
+                .ToList();
+
+            foreach (var order in orders)
+            {
+                if (order.IsDel)
+                    return BadRequest(new { code = 400, message = $"采购订单({order.OrderCode})已被删除" });
+
+                if (order.Status != 1 && order.Status != 2)
+                    return BadRequest(new { code = 400, message = $"采购订单({order.OrderCode})状态不允许生成送货单" });
+            }
 
             // ========== 供应商权限校验：只能给自己创建送货单 ==========
             var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -56,36 +83,35 @@ namespace backend.Controllers
             {
                 var currentSupplier = await _context.Suppliers
                     .FirstOrDefaultAsync(s => s.UserID == currentUserId);
-                if (currentSupplier != null && currentSupplier.SupplierID != purchaseOrder.SupplierID)
+                if (currentSupplier != null && currentSupplier.SupplierID != distinctSupplierIDs[0])
                     return BadRequest(new { code = 400, message = "只能给自己（当前供应商）创建送货单" });
             }
 
+            // ========== 生成送货单号 ==========
             var dateStr = DateTime.Now.ToString("yyyyMMdd");
-            
             var todayMaxCode = await _context.DeliveryNotes
                 .Where(d => d.NoteCode.StartsWith($"DSH{dateStr}") && !d.IsDel)
                 .OrderByDescending(d => d.NoteCode)
                 .FirstOrDefaultAsync();
-            
+
             int sequence = 1;
             if (todayMaxCode != null)
             {
                 var lastNumStr = todayMaxCode.NoteCode.Substring(11);
                 if (int.TryParse(lastNumStr, out int lastNum))
-                {
                     sequence = lastNum + 1;
-                }
             }
-            
             var noteCode = $"DSH{dateStr}{sequence.ToString("D3")}";
 
+            // ========== 创建送货单（OrderID 取第一个采购订单，保持外键兼容） ==========
+            var firstOrder = orders[0];
             var deliveryNote = new DeliveryNote
             {
                 NoteID = Guid.NewGuid().ToString(),
                 NoteCode = noteCode,
-                OrderID = deliveryDto.OrderID,
-                SupplierID = purchaseOrder.SupplierID,
-                SupplierName = purchaseOrder.SupplierName,
+                OrderID = firstOrder.OrderID,
+                SupplierID = distinctSupplierIDs[0],
+                SupplierName = firstOrder.SupplierName,
                 Status = false,
                 ExpectedDate = deliveryDto.ExpectedDate,
                 DeliveryDate = null,
@@ -97,20 +123,20 @@ namespace backend.Controllers
 
             _context.DeliveryNotes.Add(deliveryNote);
 
-            var orderDetailDict = purchaseOrder.OrderDetails?.ToDictionary(od => od.MaterialCode) ?? new Dictionary<string, OrderDetail>();
+            // ========== 构建物料字典用于校验 ==========
+            var allOrderDetailsDict = orderDetails.ToDictionary(od => od.MaterialCode);
 
-            Dictionary<string, Material> materialDict = new Dictionary<string, Material>();
-            if (orderDetailDict.Any())
-            {
-                var materialCodes = orderDetailDict.Keys.ToList();
-                materialDict = await _context.Materials
-                    .Where(m => materialCodes.Contains(m.MaterialCode))
-                    .ToDictionaryAsync(m => m.MaterialCode);
-            }
+            // ========== 加载物料信息 ==========
+            var materialCodes = orderDetails.Select(od => od.MaterialCode).Distinct().ToList();
+            var materialDict = await _context.Materials
+                .Where(m => materialCodes.Contains(m.MaterialCode))
+                .ToDictionaryAsync(m => m.MaterialCode);
 
+            // ========== 生成送货明细 ==========
             List<DeliveryDetail> deliveryDetails;
             if (deliveryDto.DetailQuantities != null && deliveryDto.DetailQuantities.Any())
             {
+                // 前端传入了明细配置（支持指定数量、覆盖物料名称等）
                 deliveryDetails = new List<DeliveryDetail>();
                 foreach (var item in deliveryDto.DetailQuantities)
                 {
@@ -120,14 +146,18 @@ namespace backend.Controllers
                     if (item.Quantity <= 0)
                         return BadRequest(new { code = 400, message = "送货数量必须大于0" });
 
-                    if (!orderDetailDict.TryGetValue(item.MaterialCode, out var orderDetail))
-                        return BadRequest(new { code = 400, message = $"采购订单中不存在物料：{item.MaterialCode}" });
+                    if (!allOrderDetailsDict.TryGetValue(item.MaterialCode, out var orderDetail))
+                        return BadRequest(new { code = 400, message = $"所选订单明细中不存在物料：{item.MaterialCode}" });
 
                     if (item.Quantity > orderDetail.Qty)
                         return BadRequest(new { code = 400, message = $"送货数量超过采购数量，物料：{item.MaterialCode}" });
 
-                    string materialName = item.MaterialName ?? materialDict?.GetValueOrDefault(item.MaterialCode)?.MaterialName ?? string.Empty;
-                    string unit = item.Unit ?? materialDict?.GetValueOrDefault(item.MaterialCode)?.Unit ?? string.Empty;
+                    string materialName = item.MaterialName
+                        ?? materialDict?.GetValueOrDefault(item.MaterialCode)?.MaterialName
+                        ?? string.Empty;
+                    string unit = item.Unit
+                        ?? materialDict?.GetValueOrDefault(item.MaterialCode)?.Unit
+                        ?? string.Empty;
 
                     deliveryDetails.Add(new DeliveryDetail
                     {
@@ -146,7 +176,8 @@ namespace backend.Controllers
             }
             else
             {
-                deliveryDetails = purchaseOrder.OrderDetails?
+                // 前端未传明细配置，按所选 OrderDetail 的全量生成
+                deliveryDetails = orderDetails
                     .Select(od => new DeliveryDetail
                     {
                         DeliveryDetailID = Guid.NewGuid().ToString(),
@@ -160,14 +191,18 @@ namespace backend.Controllers
                         ReceivedQty = 0,
                         IsDel = false
                     })
-                    .ToList() ?? new List<DeliveryDetail>();
+                    .ToList();
             }
 
             _context.DeliveryDetails.AddRange(deliveryDetails);
-            if (purchaseOrder.Status == 1)
+
+            // ========== 更新涉及到的采购订单状态（1→2 待发货） ==========
+            var ordersToUpdate = orders.Where(o => o.Status == 1).ToList();
+            foreach (var order in ordersToUpdate)
             {
-                purchaseOrder.Status = 2;
+                order.Status = 2;
             }
+
             await _context.SaveChangesAsync();
 
             return Ok(new
@@ -178,7 +213,8 @@ namespace backend.Controllers
                 {
                     deliveryNote.NoteID,
                     deliveryNote.NoteCode,
-                    deliveryNote.OrderID,
+                    PrimaryOrderID = deliveryNote.OrderID,
+                    InvolvedOrders = orders.Select(o => new { o.OrderID, o.OrderCode }).ToList(),
                     deliveryNote.SupplierID,
                     deliveryNote.SupplierName,
                     deliveryNote.Status,
