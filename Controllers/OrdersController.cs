@@ -109,14 +109,14 @@ namespace backend.Controllers
         [HttpGet]
         public async Task<ActionResult<ApiResult>> GetOrdersByList([FromBody] OrderQueryDto query)
         {
-            bool hasCondition = !string.IsNullOrWhiteSpace(query.OrderCode)
-                || !string.IsNullOrWhiteSpace(query.SupplierID)
-                || query.Status.HasValue
-                || query.StartDate.HasValue
-                || query.EndDate.HasValue;
+            //bool hasCondition = !string.IsNullOrWhiteSpace(query.OrderCode)
+            //    || !string.IsNullOrWhiteSpace(query.SupplierID)
+            //    || query.Status.HasValue
+            //    || query.StartDate.HasValue
+            //    || query.EndDate.HasValue;
 
-            if (!hasCondition)
-                return BadRequest(ApiResult.Fail("至少填写一个查询条件"));
+            //if (!hasCondition)
+            //    return BadRequest(ApiResult.Fail("至少填写一个查询条件"));
 
             var queryable = _context.PurchaseOrders
                 .Where(o => !o.IsDel);
@@ -246,47 +246,41 @@ namespace backend.Controllers
         [HttpPost]
         public async Task<ActionResult<ApiResult>> ConfirmOrder([FromBody] ConfirmOrderDto request)
         {
-            if (string.IsNullOrWhiteSpace(request.OrderID))
-                return BadRequest(ApiResult.Fail("订单ID不能为空"));
+            if (request.OrderDetailIDs == null || request.OrderDetailIDs.Count == 0)
+                return BadRequest(ApiResult.Fail("订单明细ID列表不能为空"));
 
-            var order = await _context.PurchaseOrders
-                .Include(o => o.OrderDetails)
-                .FirstOrDefaultAsync(o => o.OrderID == request.OrderID && !o.IsDel);
+            var orderDetails = await _context.OrderDetails
+                .Include(od => od.PurchaseOrder)
+                .Where(od => request.OrderDetailIDs.Contains(od.OrderDetailID) && !od.IsConfirm)
+                .ToListAsync();
 
-            if (order == null)
+            if (orderDetails.Count == 0)
+                return BadRequest(ApiResult.Fail("没有可确认的订单明细"));
+
+            var orderIds = orderDetails.Select(od => od.OrderID).Distinct().ToList();
+            if (orderIds.Count > 1)
+                return BadRequest(ApiResult.Fail("一次只能确认同一个采购订单的明细"));
+
+            var order = orderDetails.First().PurchaseOrder;
+            if (order == null || order.IsDel)
                 return NotFound(ApiResult.Fail("订单不存在"));
-
-            if (order.Status != 0)
-                return BadRequest(ApiResult.Fail("订单状态不允许确认"));
+            if (orderDetails.FirstOrDefault().IsConfirm)
+            {
+                return BadRequest(ApiResult.Fail("该订单下的此物料不允许再次确认"));
+            }
+            //if (order.Status != 0)
+            //    return BadRequest(ApiResult.Fail("订单状态不允许确认"));
 
             var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             var currentUserName = User.FindFirst(ClaimTypes.Name)?.Value;
 
-            var orderDetails = order.OrderDetails.Where(od => !od.IsConfirm).ToList();
-
-            List<string> confirmedMaterials = new List<string>();
-            if (request.MaterialCodes != null && request.MaterialCodes.Any())
+            List<string> confirmedMaterialCodes = new List<string>();
+            foreach (var detail in orderDetails)
             {
-                foreach (var materialCode in request.MaterialCodes)
-                {
-                    var detail = orderDetails.FirstOrDefault(od => od.MaterialCode == materialCode);
-                    if (detail != null)
-                    {
-                        detail.IsConfirm = true;
-                        confirmedMaterials.Add(materialCode);
-                    }
-                }
+                detail.IsConfirm = true;
+                confirmedMaterialCodes.Add(detail.MaterialCode);
             }
-            else
-            {
-                foreach (var detail in orderDetails)
-                {
-                    detail.IsConfirm = true;
-                    confirmedMaterials.Add(detail.MaterialCode);
-                }
-            }
-
-            bool allConfirmed = order.OrderDetails.All(od => od.IsConfirm);
+                bool allConfirmed = order.OrderDetails.All(od => od.IsConfirm);
             if (allConfirmed)
             {
                 order.Status = 1;
@@ -297,7 +291,6 @@ namespace backend.Controllers
                 }
                 order.UpdateTime = DateTime.Now;
             }
-
             await _context.SaveChangesAsync();
 
             return Ok(ApiResult.Ok(allConfirmed ? "订单确认成功" : "部分物料确认成功", new
@@ -306,7 +299,7 @@ namespace backend.Controllers
                 order.OrderCode,
                 order.Status,
                 StatusName = GetStatusName(order.Status),
-                ConfirmedMaterials = confirmedMaterials,
+                ConfirmedMaterialCodes = confirmedMaterialCodes,
                 IsAllConfirmed = allConfirmed
             }));
         }
