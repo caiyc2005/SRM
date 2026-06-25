@@ -18,6 +18,12 @@ namespace backend.Models.Dto
         public int PageSize { get; set; } = 20;
     }
 
+    public class ConfirmOrderDto
+    {
+        public string OrderID { get; set; } = string.Empty;
+        public List<string>? MaterialCodes { get; set; }
+    }
+
     /// <summary>
     /// 创建采购订单请求 DTO
     /// </summary>
