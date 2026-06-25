@@ -5,6 +5,7 @@ using backend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace backend.Controllers
 {
@@ -308,19 +309,27 @@ namespace backend.Controllers
         }
 
         /// <summary>
-        /// 查询供应商下的所有关联用户
+        /// 查询当前供应商主账号下的所有关联用户（仅主账号可查）
         /// </summary>
         [HttpPost]
         [Authorize(Roles = "admin,supplier")]
-        public async Task<ActionResult<ApiResult>> GetSupplierUsers([FromBody] Dictionary<string, string> body)
+        public async Task<ActionResult<ApiResult>> GetSupplierUsers()
         {
-            body.TryGetValue("supplierID", out var supplierID);
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrWhiteSpace(currentUserId))
+                return BadRequest(ApiResult.Fail("无法获取当前用户信息"));
 
-            if (string.IsNullOrWhiteSpace(supplierID))
-                return BadRequest(ApiResult.Fail("供应商ID不能为空"));
+            var currentSupplierUser = await _context.SupplierUsers
+                .FirstOrDefaultAsync(su => su.UserID == currentUserId);
+
+            if (currentSupplierUser == null)
+                return BadRequest(ApiResult.Fail("当前用户不是供应商用户"));
+
+            if (!currentSupplierUser.IsMainAccount)
+                return BadRequest(ApiResult.Fail("仅主账号可查询子账号列表"));
 
             var users = await _context.SupplierUsers
-                .Where(su => su.SupplierID == supplierID)
+                .Where(su => su.SupplierID == currentSupplierUser.SupplierID)
                 .Join(_context.Users,
                     su => su.UserID,
                     u => u.UserID,

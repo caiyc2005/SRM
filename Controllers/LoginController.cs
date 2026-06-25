@@ -113,6 +113,15 @@ namespace backend.Controllers
                 userCode: user.UserCode,
                 roles: roleNames
             );
+            // ========== 如果是供应商角色，查 SupplierID ==========
+            string? supplierID = null;
+            if (roleNames.Contains("supplier"))
+            {
+                var supplierUser = await _context.SupplierUsers
+                    .FirstOrDefaultAsync(su => su.UserID == user.UserID);
+                supplierID = supplierUser?.SupplierID;
+            }
+
             // 返回
             return Ok(new LoginResponse
             {
@@ -124,7 +133,8 @@ namespace backend.Controllers
                     UserID = user.UserID,
                     UserCode = user.UserCode,
                     UserName = user.UserName,
-                    Roles = roleNames
+                    Roles = roleNames,
+                    SupplierID = supplierID
                 }
             });
         }
