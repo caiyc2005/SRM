@@ -104,46 +104,67 @@ namespace backend.Controllers
         /// <summary>
         /// 采购订单查询
         /// </summary>
-        /// <param name="orderCode">订单编号（模糊匹配）</param>
-        /// <param name="supplierID">供应商ID（精确匹配）</param>
-        /// <param name="status">订单状态：0-待确认，1-已确认，2-待发货，3-已发货，4-已收货</param>
-        /// <param name="pageIndex">页码，默认1</param>
-        /// <param name="pageSize">每页条数，默认20</param>
+        /// <param name="query">查询参数</param>
         /// <returns>分页订单列表</returns>
-        [HttpGet]
-        public async Task<ActionResult<ApiResult>> GetOrdersByList(
-            [FromQuery] string? orderCode = null,
-            [FromQuery] string? supplierID = null,
-            [FromQuery] int? status = null,
-            [FromQuery] int pageIndex = 1,
-            [FromQuery] int pageSize = 20)
+        [HttpPost]
+        public async Task<ActionResult<ApiResult>> GetOrdersByList([FromBody] OrderQueryDto query)
         {
-            // ========== 构建查询条件 ==========
-            var query = _context.PurchaseOrders
+            bool hasCondition = !string.IsNullOrWhiteSpace(query.OrderCode)
+                || !string.IsNullOrWhiteSpace(query.SupplierID)
+                || query.Status.HasValue
+                || query.StartDate.HasValue
+                || query.EndDate.HasValue;
+
+            if (!hasCondition)
+                return BadRequest(ApiResult.Fail("至少填写一个查询条件"));
+
+            var queryable = _context.PurchaseOrders
                 .Where(o => !o.IsDel);
 
-            // 根据订单编号模糊查询
-            if (!string.IsNullOrWhiteSpace(orderCode))
-                query = query.Where(o => o.OrderCode.Contains(orderCode));
+            if (!string.IsNullOrWhiteSpace(query.OrderCode))
+                queryable = queryable.Where(o => o.OrderCode.Contains(query.OrderCode));
 
-            // 根据供应商ID精确查询
-            if (!string.IsNullOrWhiteSpace(supplierID))
-                query = query.Where(o => o.SupplierID == supplierID);
+            if (!string.IsNullOrWhiteSpace(query.SupplierID))
+                queryable = queryable.Where(o => o.SupplierID == query.SupplierID);
 
-            // 根据状态筛选
-            if (status.HasValue)
-                query = query.Where(o => o.Status == status.Value);
+            if (query.Status.HasValue)
+                queryable = queryable.Where(o => o.Status == query.Status.Value);
 
-            // ========== 执行分页查询 ==========
-            var total = await query.CountAsync();
-            // 先查询所有数据到内存，再进行分页（兼容低版本SQL Server）
-            // 修改查询，使用左连接
-            var orders = await query
+            if (query.StartDate.HasValue)
+                queryable = queryable.Where(o => o.CreateTime >= query.StartDate.Value);
+
+            if (query.EndDate.HasValue)
+                queryable = queryable.Where(o => o.CreateTime <= query.EndDate.Value.AddDays(1).AddTicks(-1));
+
+            var total = await queryable.CountAsync();
+
+            var ordersQuery = queryable
                 .Include(o => o.Supplier)
                 .Include(o => o.CreateByUser)
-                .Include(o => o.OrderDetails)
-        
-                .OrderByDescending(o => o.CreateTime)
+                .Include(o => o.OrderDetails);
+
+            IOrderedQueryable<PurchaseOrder> orderedQuery;
+            switch ((query.SortField ?? "CreateTime").ToLower())
+            {
+                case "ordercode":
+                    orderedQuery = query.SortOrder?.ToLower() == "asc"
+                        ? ordersQuery.OrderBy(o => o.OrderCode)
+                        : ordersQuery.OrderByDescending(o => o.OrderCode);
+                    break;
+                case "status":
+                    orderedQuery = query.SortOrder?.ToLower() == "asc"
+                        ? ordersQuery.OrderBy(o => o.Status)
+                        : ordersQuery.OrderByDescending(o => o.Status);
+                    break;
+                case "createtime":
+                default:
+                    orderedQuery = query.SortOrder?.ToLower() == "asc"
+                        ? ordersQuery.OrderBy(o => o.CreateTime)
+                        : ordersQuery.OrderByDescending(o => o.CreateTime);
+                    break;
+            }
+
+            var orders = await orderedQuery
                 .Select(o => new
                 {
                     o.OrderID,
@@ -172,10 +193,10 @@ namespace backend.Controllers
                     }).ToList()
                 })
                 .ToListAsync();
-            // 在内存中进行分页和状态名称转换
+
             var paginatedOrders = orders
-                .Skip((pageIndex - 1) * pageSize)
-                .Take(pageSize)
+                .Skip((query.PageIndex - 1) * query.PageSize)
+                .Take(query.PageSize)
                 .Select(o => new
                 {
                     o.OrderID,
@@ -192,7 +213,6 @@ namespace backend.Controllers
                     o.UpdateTime,
                     o.Memo,
                     o.NoteCode,
-                    // 订单明细列表
                     OrderDetails = o.OrderDetails.Select(d => new
                     {
                         d.OrderDetailID,
@@ -210,8 +230,8 @@ namespace backend.Controllers
             return Ok(ApiResult.Ok("查询成功", new
             {
                 Total = total,
-                PageIndex = pageIndex,
-                PageSize = pageSize,
+                PageIndex = query.PageIndex,
+                PageSize = query.PageSize,
                 List = paginatedOrders
             }));
         }
