@@ -106,7 +106,7 @@ namespace backend.Controllers
         /// </summary>
         /// <param name="query">查询参数</param>
         /// <returns>分页订单列表</returns>
-        [HttpPost]
+        [HttpGet]
         public async Task<ActionResult<ApiResult>> GetOrdersByList([FromBody] OrderQueryDto query)
         {
             bool hasCondition = !string.IsNullOrWhiteSpace(query.OrderCode)
