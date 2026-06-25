@@ -155,6 +155,12 @@ namespace backend.Controllers
                     Unit = od.Material.Unit,
                     // 明细信息
                     od.Qty,
+                    DeliveredQty = _context.DeliveryDetails
+                        .Where(dd => !dd.IsDel && dd.OrderDetailID == od.OrderDetailID)
+                        .Sum(dd => (decimal?)dd.Quantity) ?? 0m,
+                    AvailableQty = od.Qty - (_context.DeliveryDetails
+                        .Where(dd => !dd.IsDel && dd.OrderDetailID == od.OrderDetailID)
+                        .Sum(dd => (decimal?)dd.Quantity) ?? 0m),
                     od.UnitPrice,
                     od.Amount,
                     od.IsConfirm
@@ -221,6 +227,12 @@ namespace backend.Controllers
                     Unit = od.Material.Unit,
                     // 明细信息
                     od.Qty,
+                    DeliveredQty = _context.DeliveryDetails
+                        .Where(dd => !dd.IsDel && dd.OrderDetailID == od.OrderDetailID)
+                        .Sum(dd => (decimal?)dd.Quantity) ?? 0m,
+                    AvailableQty = od.Qty - (_context.DeliveryDetails
+                        .Where(dd => !dd.IsDel && dd.OrderDetailID == od.OrderDetailID)
+                        .Sum(dd => (decimal?)dd.Quantity) ?? 0m),
                     od.UnitPrice,
                     od.Amount,
                     od.IsConfirm
@@ -330,6 +342,12 @@ namespace backend.Controllers
                         Spec = d.Material.Spec,
                         Unit = d.Material.Unit,
                         d.Qty,
+                        DeliveredQty = _context.DeliveryDetails
+                            .Where(dd => !dd.IsDel && dd.OrderDetailID == d.OrderDetailID)
+                            .Sum(dd => (decimal?)dd.Quantity) ?? 0m,
+                        AvailableQty = d.Qty - (_context.DeliveryDetails
+                            .Where(dd => !dd.IsDel && dd.OrderDetailID == d.OrderDetailID)
+                            .Sum(dd => (decimal?)dd.Quantity) ?? 0m),
                         d.UnitPrice,
                         d.Amount,
                         d.IsConfirm
@@ -365,6 +383,8 @@ namespace backend.Controllers
                         d.Spec,
                         d.Unit,
                         d.Qty,
+                        d.DeliveredQty,
+                        d.AvailableQty,
                         d.UnitPrice,
                         d.Amount,
                         d.IsConfirm

@@ -101,8 +101,16 @@ namespace backend.Controllers
                     return BadRequest(new { code = 400, message = "只能给自己（当前供应商）创建送货单" });
             }
 
-            // ========== 校验：各明细的送货数量 ==========
+            // ========== 校验：各明细的送货数量（含已有送货，累计不超采购总数） ==========
             var orderDetailDict = orderDetails.ToDictionary(od => od.OrderDetailID);
+
+            // 获取各明细已有的累计送货数量
+            var existingDelivered = await _context.DeliveryDetails
+                .Where(dd => !dd.IsDel && orderDetailIDs.Contains(dd.OrderDetailID))
+                .GroupBy(dd => dd.OrderDetailID)
+                .Select(g => new { OrderDetailID = g.Key, TotalQty = g.Sum(dd => dd.Quantity) })
+                .ToDictionaryAsync(g => g.OrderDetailID, g => g.TotalQty);
+
             foreach (var item in deliveryDto.Items)
             {
                 if (item.DeliveryQty <= 0)
@@ -111,8 +119,12 @@ namespace backend.Controllers
                 if (!orderDetailDict.TryGetValue(item.OrderDetailID, out var od))
                     return BadRequest(new { code = 400, message = $"所选订单明细中不存在：{item.OrderDetailID}" });
 
-                if (item.DeliveryQty > od.Qty)
-                    return BadRequest(new { code = 400, message = $"送货数量超过采购数量（{od.Qty}），明细：{item.OrderDetailID}" });
+                var alreadyQty = existingDelivered.GetValueOrDefault(item.OrderDetailID, 0);
+                var remainQty = od.Qty - alreadyQty;
+                if (item.DeliveryQty > remainQty)
+                {
+                    return BadRequest(new { code = 400, message = $"累计送货数量超出采购数量（采购 {od.Qty}，已送 {alreadyQty}，可送 {remainQty}），明细：{item.OrderDetailID}" });
+                }
             }
 
             // ========== 生成送货单号 ==========
@@ -174,15 +186,7 @@ namespace backend.Controllers
             _context.DeliveryDetails.AddRange(deliveryDetails);
 
             // ========== 更新订单明细状态（累计已送数量 ≥ 采购数量时才设为 2=已生成送货单） ==========
-            // 1. 获取各明细已有的送货数量
-            var orderDetailIdList = orderDetails.Select(od => od.OrderDetailID).ToList();
-            var existingDeliveredQty = await _context.DeliveryDetails
-                .Where(dd => !dd.IsDel && orderDetailIdList.Contains(dd.OrderDetailID))
-                .GroupBy(dd => dd.OrderDetailID)
-                .Select(g => new { OrderDetailID = g.Key, TotalQty = g.Sum(dd => dd.Quantity) })
-                .ToDictionaryAsync(g => g.OrderDetailID, g => g.TotalQty);
-
-            // 2. 本次各明细的送货数量
+            // 本次各明细的送货数量
             var currentDeliveredQty = deliveryDetails
                 .GroupBy(dd => dd.OrderDetailID)
                 .ToDictionary(g => g.Key, g => g.Sum(dd => dd.Quantity));
@@ -190,7 +194,7 @@ namespace backend.Controllers
             // 3. 判断是否全部送齐
             foreach (var od in orderDetails)
             {
-                var alreadyDelivered = existingDeliveredQty.GetValueOrDefault(od.OrderDetailID, 0);
+                var alreadyDelivered = existingDelivered.GetValueOrDefault(od.OrderDetailID, 0);
                 var currentDeliver = currentDeliveredQty.GetValueOrDefault(od.OrderDetailID, 0);
                 if (alreadyDelivered + currentDeliver >= od.Qty)
                 {
