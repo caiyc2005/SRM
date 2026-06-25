@@ -106,8 +106,8 @@ namespace backend.Controllers
         /// </summary>
         /// <param name="query">查询参数</param>
         /// <returns>分页订单列表</returns>
-        [HttpGet]
-        public async Task<ActionResult<ApiResult>> GetOrdersByList([FromBody] OrderQueryDto query)
+        [HttpPost]
+        public async Task<ActionResult<ApiResult>> GetOrdersByList(OrderQueryDto query)
         {
             //bool hasCondition = !string.IsNullOrWhiteSpace(query.OrderCode)
             //    || !string.IsNullOrWhiteSpace(query.SupplierID)
@@ -244,14 +244,16 @@ namespace backend.Controllers
         /// <param name="request">确认请求（订单ID + 可选的物料编码列表）</param>
         /// <returns>确认结果</returns>
         [HttpPost]
-        public async Task<ActionResult<ApiResult>> ConfirmOrder([FromBody] ConfirmOrderDto request)
+        public async Task<ActionResult<ApiResult>> ConfirmOrderDetail(ConfirmOrderDetailDto dto)
         {
-            if (request.OrderDetailIDs == null || request.OrderDetailIDs.Count == 0)
-                return BadRequest(ApiResult.Fail("订单明细ID列表不能为空"));
+            // 单条确认采购订单
+            if (dto.orderDetailID == null)
+                return BadRequest(ApiResult.Fail("订单明细ID不能为空"));
+
 
             var orderDetails = await _context.OrderDetails
                 .Include(od => od.PurchaseOrder)
-                .Where(od => request.OrderDetailIDs.Contains(od.OrderDetailID) && !od.IsConfirm)
+                .Where(od => dto.orderDetailID.Contains(od.OrderDetailID) && !od.IsConfirm)
                 .ToListAsync();
 
             if (orderDetails.Count == 0)

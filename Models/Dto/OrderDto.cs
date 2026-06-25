@@ -18,9 +18,10 @@ namespace backend.Models.Dto
         public int PageSize { get; set; } = 20;
     }
 
-    public class ConfirmOrderDto
+    public class ConfirmOrderDetailDto
     {
-        public List<string> OrderDetailIDs { get; set; } = new List<string>();
+        public string orderDetailID { get; set; }
+        //public List<string> OrderDetailIDs { get; set; } = new List<string>();
 
 
     }
