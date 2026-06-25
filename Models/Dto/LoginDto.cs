@@ -30,5 +30,6 @@ namespace backend.Models.Dto
         public string UserName { get; set; } = string.Empty;
         public List<string> Roles { get; set; } = new();
         public string? SupplierID { get; set; }
+        public bool IsMainAccount { get; set; }
     }
 }

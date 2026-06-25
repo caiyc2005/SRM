@@ -113,13 +113,18 @@ namespace backend.Controllers
                 userCode: user.UserCode,
                 roles: roleNames
             );
-            // ========== 如果是供应商角色，查 SupplierID ==========
+            // ========== 如果是供应商角色，查 SupplierID 和 IsMainAccount ==========
             string? supplierID = null;
+            var isMainAccount = false;
             if (roleNames.Contains("supplier"))
             {
                 var supplierUser = await _context.SupplierUsers
                     .FirstOrDefaultAsync(su => su.UserID == user.UserID);
-                supplierID = supplierUser?.SupplierID;
+                if (supplierUser != null)
+                {
+                    supplierID = supplierUser.SupplierID;
+                    isMainAccount = supplierUser.IsMainAccount;
+                }
             }
 
             // 返回
@@ -134,7 +139,8 @@ namespace backend.Controllers
                     UserCode = user.UserCode,
                     UserName = user.UserName,
                     Roles = roleNames,
-                    SupplierID = supplierID
+                    SupplierID = supplierID,
+                    IsMainAccount = isMainAccount
                 }
             });
         }
