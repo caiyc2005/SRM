@@ -84,6 +84,7 @@ namespace backend.Controllers
                     OrderDetailID = Guid.NewGuid().ToString(),
                     OrderID = order.OrderID,
                     MaterialID = material.MaterialID,
+
                     Qty = item.Qty,
                     UnitPrice = item.UnitPrice,
                     Amount = item.Qty * (item.UnitPrice ?? 0)
@@ -123,9 +124,9 @@ namespace backend.Controllers
             if (!string.IsNullOrWhiteSpace(detailsDto.SupplierID))
                 queryable = queryable.Where(od => od.PurchaseOrder.SupplierID == detailsDto.SupplierID);
 
-            // 按订单明细状态过滤
-            //if (detailsDto.Status.HasValue)
-            //    queryable = queryable.Where(od => od.PurchaseOrder.Status == detailsDto.Status.Value);
+            // 按订单明细状态过滤（0=未确认, 1=已确认, 2=送货中, 3=已发货）
+            if (detailsDto.IsConfirm.HasValue)
+                queryable = queryable.Where(od => od.IsConfirm == detailsDto.IsConfirm.Value);
 
             // 统计总数
             var total = await queryable.CountAsync();
@@ -179,7 +180,7 @@ namespace backend.Controllers
             var queryable = _context.OrderDetails
                 .Include(od => od.PurchaseOrder)
                 .Include(od => od.Material)
-                .Where(od => !od.PurchaseOrder.IsDel && od.IsConfirm==1);//判断订单为1
+                .Where(od => !od.PurchaseOrder.IsDel);
 
             // 按采购订单编号过滤
             if (!string.IsNullOrWhiteSpace(detailsDto.OrderCode))
@@ -189,9 +190,9 @@ namespace backend.Controllers
             if (!string.IsNullOrWhiteSpace(detailsDto.SupplierID))
                 queryable = queryable.Where(od => od.PurchaseOrder.SupplierID == detailsDto.SupplierID);
 
-            // 按订单明细状态过滤
-            //if (detailsDto.Status.HasValue)
-            //    queryable = queryable.Where(od => od.PurchaseOrder.Status == detailsDto.Status.Value);
+            // 按订单明细状态过滤（IsConfirm: 0=未确认, 1=已确认, 2=送货中, 3=已发货）
+            if (detailsDto.IsConfirm.HasValue)
+                queryable = queryable.Where(od => od.IsConfirm == detailsDto.IsConfirm.Value);
 
             // 统计总数
             var total = await queryable.CountAsync();
@@ -324,9 +325,10 @@ namespace backend.Controllers
                     {
                         d.OrderDetailID,
                         d.MaterialID,
-                        MaterialName = _context.Materials.Where(m => m.MaterialCode == d.MaterialID).Select(m => m.MaterialName).FirstOrDefault(),
-                        Spec = _context.Materials.Where(m => m.MaterialCode == d.MaterialID).Select(m => m.Spec).FirstOrDefault(),
-                        Unit = _context.Materials.Where(m => m.MaterialCode == d.MaterialID).Select(m => m.Unit).FirstOrDefault(),
+                        MaterialCode = d.Material.MaterialCode,
+                        MaterialName = d.Material.MaterialName,
+                        Spec = d.Material.Spec,
+                        Unit = d.Material.Unit,
                         d.Qty,
                         d.UnitPrice,
                         d.Amount,
@@ -358,7 +360,7 @@ namespace backend.Controllers
                     {
                         d.OrderDetailID,
                         d.MaterialID,
-                        //d.MaterialCode,
+                        d.MaterialCode,
                         d.MaterialName,
                         d.Spec,
                         d.Unit,
@@ -381,6 +383,59 @@ namespace backend.Controllers
 
 
         
+
+        /// <summary>
+        /// 整单确认 — 将当前采购订单下所有未确认的明细全部确认为已确认
+        /// </summary>
+        [HttpPost]
+        public async Task<ActionResult<ApiResult>> ConfirmOrder([FromBody] OrderIdRequest dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.orderID))
+                return BadRequest(ApiResult.Fail("采购订单ID不能为空"));
+
+            var order = await _context.PurchaseOrders
+                .Include(o => o.OrderDetails)
+                .FirstOrDefaultAsync(o => o.OrderID == dto.orderID && !o.IsDel);
+
+            if (order == null)
+                return NotFound(ApiResult.Fail("采购订单不存在"));
+
+            if (order.Status >= 1)
+                return BadRequest(ApiResult.Fail("该订单已完成确认，无需重复操作"));
+
+            var unconfirmedDetails = order.OrderDetails?
+                .Where(od => od.IsConfirm == 0)
+                .ToList() ?? new List<OrderDetail>();
+
+            if (unconfirmedDetails.Count == 0)
+                return BadRequest(ApiResult.Fail("没有可确认的订单明细"));
+
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var currentUserName = User.FindFirst(ClaimTypes.Name)?.Value;
+
+            foreach (var detail in unconfirmedDetails)
+            {
+                detail.IsConfirm = 1;
+            }
+
+            order.Status = 1;
+            if (!string.IsNullOrWhiteSpace(currentUserId))
+            {
+                order.UpdateByID = currentUserId;
+                order.UpdateByName = currentUserName;
+            }
+            order.UpdateTime = DateTime.Now;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(ApiResult.Ok("整单确认成功", new
+            {
+                order.OrderID,
+                order.OrderCode,
+                order.Status,
+                ConfirmedCount = unconfirmedDetails.Count
+            }));
+        }
 
         /// <summary>
         /// 确认采购订单（支持按物料分批确认）

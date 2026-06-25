@@ -124,11 +124,10 @@ namespace backend.Models
                       .HasForeignKey(e => e.OrderID)
                       .OnDelete(DeleteBehavior.Restrict);
 
-                // OrderDetail -> Material（通过 MaterialCode，关联 Material.MaterialCode 而非主键 MaterialID）
+                // OrderDetail -> Material（通过 MaterialID 关联 Material 主键）
                 entity.HasOne(e => e.Material)
                       .WithMany()
                       .HasForeignKey(e => e.MaterialID)
-                      .HasPrincipalKey(e => e.MaterialCode)
                       .OnDelete(DeleteBehavior.Restrict);
             });
 

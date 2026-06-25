@@ -22,7 +22,7 @@ namespace backend.Models.Dto
     {
         public string? OrderCode { get; set; }
         public string? SupplierID { get; set; }
-        public bool IsConfirm { get; set; }
+        public int? IsConfirm { get; set; }
         public int PageIndex { get; set; } = 1;
         public int PageSize { get; set; } = 20;
     }

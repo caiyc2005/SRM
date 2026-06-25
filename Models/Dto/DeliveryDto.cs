@@ -16,9 +16,9 @@
     public class DeliveryDto
     {
         /// <summary>
-        /// 订单明细ID列表（支持跨采购订单选择部分物料）
+        /// 送货明细列表（含订单明细ID + 本次送货数量）
         /// </summary>
-        public List<string> OrderDetailIDs { get; set; } = new List<string>();
+        public List<DeliveryItem> Items { get; set; } = new List<DeliveryItem>();
 
         /// <summary>
         /// 预计到货日期（可选）
@@ -34,13 +34,19 @@
         /// 创建人姓名（必填）
         /// </summary>
         public string CreateByName { get; set; } = string.Empty;
+    }
+
+    public class DeliveryItem
+    {
+        /// <summary>
+        /// 订单明细ID
+        /// </summary>
+        public string OrderDetailID { get; set; } = string.Empty;
 
         /// <summary>
-        /// 送货明细配置（可选）
-        /// 若不传，则默认使用采购订单中的 Qty；
-        /// 若传入，则按此配置生成送货单（支持部分送货、分批送货及前端覆盖物料信息）
+        /// 本次送货数量
         /// </summary>
-        public List<DeliveryDetailQuantity>? DetailQuantities { get; set; }
+        public decimal DeliveryQty { get; set; }
     }
 
     public class ConfirmDeliveryDto

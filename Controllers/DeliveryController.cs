@@ -28,11 +28,11 @@ namespace backend.Controllers
         /// </summary>
         [HttpPost]
         [Authorize(Roles = "admin,supplier")]
-        public async Task<IActionResult> CreateDeliveryNote(DeliveryDto deliveryDto)
+        public async Task<IActionResult> CreateDeliveryNote([FromBody] DeliveryDto deliveryDto)
         {
             // ========== 参数校验 ==========
-            if (deliveryDto.OrderDetailIDs == null || deliveryDto.OrderDetailIDs.Count == 0)
-                return BadRequest(new { code = 400, message = "订单明细ID不能为空" });
+            if (deliveryDto.Items == null || deliveryDto.Items.Count == 0)
+                return BadRequest(new { code = 400, message = "送货明细不能为空" });
 
             if (string.IsNullOrWhiteSpace(deliveryDto.CreateByID))
                 return BadRequest(new { code = 400, message = "创建人ID不能为空" });
@@ -40,18 +40,31 @@ namespace backend.Controllers
             if (string.IsNullOrWhiteSpace(deliveryDto.CreateByName))
                 return BadRequest(new { code = 400, message = "创建人姓名不能为空" });
 
-            // ========== 加载所有订单明细及对应采购订单、物料 ==========
+            // ========== 提取所有 OrderDetailID ==========
+            var orderDetailIDs = deliveryDto.Items.Select(i => i.OrderDetailID).Distinct().ToList();
+            if (orderDetailIDs.Any(string.IsNullOrWhiteSpace))
+                return BadRequest(new { code = 400, message = "订单明细ID不能为空" });
+
+            // ========== 加载所有订单明细 ==========
             var orderDetails = await _context.OrderDetails
                 .Include(od => od.PurchaseOrder)
                 .Include(od => od.Material)
-                .Where(od => deliveryDto.OrderDetailIDs.Contains(od.OrderDetailID))
+                .Where(od => orderDetailIDs.Contains(od.OrderDetailID))
                 .ToListAsync();
 
-            if (orderDetails.Count != deliveryDto.OrderDetailIDs.Count)
+            if (orderDetails.Count != orderDetailIDs.Count)
             {
                 var foundIds = orderDetails.Select(od => od.OrderDetailID).ToHashSet();
-                var missingIds = deliveryDto.OrderDetailIDs.Where(id => !foundIds.Contains(id)).ToList();
+                var missingIds = orderDetailIDs.Where(id => !foundIds.Contains(id)).ToList();
                 return BadRequest(new { code = 400, message = $"以下订单明细不存在：{string.Join(", ", missingIds)}" });
+            }
+
+            // ========== 校验：明细未重复生成送货单 ==========
+            var alreadyDelivering = orderDetails.Where(od => od.IsConfirm >= 2).ToList();
+            if (alreadyDelivering.Any())
+            {
+                var codes = alreadyDelivering.Select(od => od.Material?.MaterialCode ?? od.OrderDetailID).ToList();
+                return BadRequest(new { code = 400, message = $"以下物料已生成送货单，不可重复操作：{string.Join(", ", codes)}" });
             }
 
             // ========== 校验：所有明细必须属于同一个供应商 ==========
@@ -63,7 +76,7 @@ namespace backend.Controllers
             if (distinctSupplierIDs.Count > 1)
                 return BadRequest(new { code = 400, message = "不能同时为不同供应商的订单创建送货单" });
 
-            // ========== 校验：各采购订单状态是否允许生成送货单 ==========
+            // ========== 校验：各采购订单状态 ==========
             var orders = orderDetails
                 .Select(od => od.PurchaseOrder)
                 .DistinctBy(o => o.OrderID)
@@ -78,7 +91,7 @@ namespace backend.Controllers
                     return BadRequest(new { code = 400, message = $"采购订单({order.OrderCode})状态不允许生成送货单" });
             }
 
-            // ========== 供应商权限校验：只能给自己创建送货单 ==========
+            // ========== 供应商权限校验 ==========
             var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (!string.IsNullOrWhiteSpace(currentUserId))
             {
@@ -86,6 +99,20 @@ namespace backend.Controllers
                     .FirstOrDefaultAsync(s => s.UserID == currentUserId);
                 if (currentSupplier != null && currentSupplier.SupplierID != distinctSupplierIDs[0])
                     return BadRequest(new { code = 400, message = "只能给自己（当前供应商）创建送货单" });
+            }
+
+            // ========== 校验：各明细的送货数量 ==========
+            var orderDetailDict = orderDetails.ToDictionary(od => od.OrderDetailID);
+            foreach (var item in deliveryDto.Items)
+            {
+                if (item.DeliveryQty <= 0)
+                    return BadRequest(new { code = 400, message = $"送货数量必须大于0，明细：{item.OrderDetailID}" });
+
+                if (!orderDetailDict.TryGetValue(item.OrderDetailID, out var od))
+                    return BadRequest(new { code = 400, message = $"所选订单明细中不存在：{item.OrderDetailID}" });
+
+                if (item.DeliveryQty > od.Qty)
+                    return BadRequest(new { code = 400, message = $"送货数量超过采购数量（{od.Qty}），明细：{item.OrderDetailID}" });
             }
 
             // ========== 生成送货单号 ==========
@@ -104,10 +131,8 @@ namespace backend.Controllers
             }
             var noteCode = $"DSH{dateStr}{sequence.ToString("D3")}";
 
-            // ========== 创建送货单（OrderID 为必填外键，取第一个采购订单） ==========
-            // 一个送货单可能涉及多个采购订单，真实的订单关联通过 OrderDetail.OrderID 体现
+            // ========== 创建送货单 ==========
             var primaryOrder = orders[0];
-
             var deliveryNote = new DeliveryNote
             {
                 NoteID = Guid.NewGuid().ToString(),
@@ -122,53 +147,14 @@ namespace backend.Controllers
                 CreatedTime = DateTime.Now,
                 IsDel = false
             };
-
             _context.DeliveryNotes.Add(deliveryNote);
 
-            // ========== 构建 OrderDetailID → OrderDetail 字典用于校验 ==========
-            var allOrderDetailsDict = orderDetails.ToDictionary(od => od.OrderDetailID);
-
             // ========== 生成送货明细 ==========
-            List<DeliveryDetail> deliveryDetails;
-            if (deliveryDto.DetailQuantities != null && deliveryDto.DetailQuantities.Any())
-            {
-                // 前端按 OrderDetailID 指定送货明细（支持指定数量、覆盖物料名称等）
-                deliveryDetails = new List<DeliveryDetail>();
-                foreach (var item in deliveryDto.DetailQuantities)
+            var deliveryDetails = deliveryDto.Items
+                .Select(item =>
                 {
-                    if (string.IsNullOrWhiteSpace(item.OrderDetailID))
-                        return BadRequest(new { code = 400, message = "订单明细ID不能为空" });
-
-                    if (item.Quantity <= 0)
-                        return BadRequest(new { code = 400, message = "送货数量必须大于0" });
-
-                    if (!allOrderDetailsDict.TryGetValue(item.OrderDetailID, out var orderDetail))
-                        return BadRequest(new { code = 400, message = $"所选订单明细中不存在：{item.OrderDetailID}" });
-
-                    if (item.Quantity > orderDetail.Qty)
-                        return BadRequest(new { code = 400, message = $"送货数量超过采购数量（{orderDetail.Qty}），明细：{item.OrderDetailID}" });
-
-                    deliveryDetails.Add(new DeliveryDetail
-                    {
-                        DeliveryDetailID = Guid.NewGuid().ToString(),
-                        NoteID = deliveryNote.NoteID,
-                        OrderDetailID = orderDetail.OrderDetailID,
-                        MaterialCode = orderDetail.Material?.MaterialCode ?? string.Empty,
-                        MaterialName = item.MaterialName ?? orderDetail.Material?.MaterialName ?? string.Empty,
-                        Unit = item.Unit ?? orderDetail.Material?.Unit ?? string.Empty,
-                        Quantity = item.Quantity,
-                        UnitPrice = orderDetail.UnitPrice,
-                        Amount = item.Quantity * (orderDetail.UnitPrice ?? 0),
-                        ReceivedQty = 0,
-                        IsDel = false
-                    });
-                }
-            }
-            else
-            {
-                // 前端未传明细配置，按所选 OrderDetail 的全量生成
-                deliveryDetails = orderDetails
-                    .Select(od => new DeliveryDetail
+                    var od = orderDetailDict[item.OrderDetailID];
+                    return new DeliveryDetail
                     {
                         DeliveryDetailID = Guid.NewGuid().ToString(),
                         NoteID = deliveryNote.NoteID,
@@ -176,21 +162,40 @@ namespace backend.Controllers
                         MaterialCode = od.Material?.MaterialCode ?? string.Empty,
                         MaterialName = od.Material?.MaterialName ?? string.Empty,
                         Unit = od.Material?.Unit ?? string.Empty,
-                        Quantity = od.Qty,
+                        Quantity = item.DeliveryQty,
                         UnitPrice = od.UnitPrice,
-                        Amount = od.Amount,
+                        Amount = item.DeliveryQty * (od.UnitPrice ?? 0),
                         ReceivedQty = 0,
                         IsDel = false
-                    })
-                    .ToList();
-            }
+                    };
+                })
+                .ToList();
 
             _context.DeliveryDetails.AddRange(deliveryDetails);
 
-            // ========== 更新订单明细状态（2 = 已生成送货单） ==========
+            // ========== 更新订单明细状态（累计已送数量 ≥ 采购数量时才设为 2=已生成送货单） ==========
+            // 1. 获取各明细已有的送货数量
+            var orderDetailIdList = orderDetails.Select(od => od.OrderDetailID).ToList();
+            var existingDeliveredQty = await _context.DeliveryDetails
+                .Where(dd => !dd.IsDel && orderDetailIdList.Contains(dd.OrderDetailID))
+                .GroupBy(dd => dd.OrderDetailID)
+                .Select(g => new { OrderDetailID = g.Key, TotalQty = g.Sum(dd => dd.Quantity) })
+                .ToDictionaryAsync(g => g.OrderDetailID, g => g.TotalQty);
+
+            // 2. 本次各明细的送货数量
+            var currentDeliveredQty = deliveryDetails
+                .GroupBy(dd => dd.OrderDetailID)
+                .ToDictionary(g => g.Key, g => g.Sum(dd => dd.Quantity));
+
+            // 3. 判断是否全部送齐
             foreach (var od in orderDetails)
             {
-                od.IsConfirm = 2;
+                var alreadyDelivered = existingDeliveredQty.GetValueOrDefault(od.OrderDetailID, 0);
+                var currentDeliver = currentDeliveredQty.GetValueOrDefault(od.OrderDetailID, 0);
+                if (alreadyDelivered + currentDeliver >= od.Qty)
+                {
+                    od.IsConfirm = 2;
+                }
             }
 
             // ========== 更新涉及到的采购订单状态（1→2 待发货） ==========
