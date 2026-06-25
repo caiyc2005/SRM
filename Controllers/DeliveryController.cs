@@ -59,14 +59,6 @@ namespace backend.Controllers
                 return BadRequest(new { code = 400, message = $"以下订单明细不存在：{string.Join(", ", missingIds)}" });
             }
 
-            // ========== 校验：明细未重复生成送货单 ==========
-            var alreadyDelivering = orderDetails.Where(od => od.IsConfirm >= 2).ToList();
-            if (alreadyDelivering.Any())
-            {
-                var codes = alreadyDelivering.Select(od => od.Material?.MaterialCode ?? od.OrderDetailID).ToList();
-                return BadRequest(new { code = 400, message = $"以下物料已生成送货单，不可重复操作：{string.Join(", ", codes)}" });
-            }
-
             // ========== 校验：所有明细必须属于同一个供应商 ==========
             var distinctSupplierIDs = orderDetails
                 .Select(od => od.PurchaseOrder.SupplierID)
@@ -151,7 +143,7 @@ namespace backend.Controllers
                 NoteCode = noteCode,
                 SupplierID = distinctSupplierIDs[0],
                 SupplierName = primaryOrder.SupplierName,
-                Status = false,
+                Status = 0,
                 ExpectedDate = deliveryDto.ExpectedDate,
                 DeliveryDate = null,
                 CreateByID = deliveryDto.CreateByID,
@@ -202,11 +194,20 @@ namespace backend.Controllers
                 }
             }
 
-            // ========== 更新涉及到的采购订单状态（1→2 待发货） ==========
-            var ordersToUpdate = orders.Where(o => o.Status == 1).ToList();
-            foreach (var order in ordersToUpdate)
+            // ========== 更新涉及到的采购订单状态（全部明细已生成送货单时才设为 2 待发货） ==========
+            foreach (var order in orders)
             {
-                order.Status = 2;
+                if (order.Status >= 2) continue;
+
+                var allDetails = await _context.OrderDetails
+                    .Where(od => od.OrderID == order.OrderID)
+                    .ToListAsync();
+
+                if (allDetails.All(od => od.IsConfirm >= 2))
+                {
+                    order.Status = 2;
+                    order.UpdateTime = DateTime.Now;
+                }
             }
 
             await _context.SaveChangesAsync();
@@ -249,7 +250,7 @@ namespace backend.Controllers
             if (deliveryNote == null)
                 return NotFound(new { code = 404, message = "送货单不存在" });
 
-            if (deliveryNote.Status)
+            if (deliveryNote.Status >= 1)
                 return BadRequest(new { code = 400, message = "该送货单已完成发货，无需重复操作" });
 
             var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -292,7 +293,7 @@ namespace backend.Controllers
             }
 
             // ========== 更新送货单状态 ==========
-            deliveryNote.Status = true;
+            deliveryNote.Status = 1;
             deliveryNote.DeliveryDate = DateTime.Now;
             if (confirmDto.ExpectedDeliveryDate.HasValue)
             {
@@ -396,6 +397,9 @@ namespace backend.Controllers
                 query = query.Where(d => d.DeliveryDetails.Any(dd => dd.OrderDetail.PurchaseOrder.OrderCode.Contains(deliveryGetDto.orderCode)));
             if (deliveryGetDto.status.HasValue)
                 query = query.Where(d => d.Status == deliveryGetDto.status.Value);
+
+            if (deliveryGetDto.isReceived == false)
+                query = query.Where(d => d.Status != 2);
 
             // ========== 供应商权限校验：只能查看自己的送货单 ==========
             var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

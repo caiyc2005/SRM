@@ -9,7 +9,8 @@
         public string? supplierId { get; set; }
 
         public string? userID { get; set; }//新增
-        public bool? status { get; set; }
+        public int? status { get; set; }
+        public bool? isReceived { get; set; }
         public int page { get; set; } = 1;
         public int pageSize { get; set; } = 10;
     }

@@ -179,14 +179,14 @@ namespace backend.Controllers
 
 
         [HttpPost]
-        // 获取已确认的采购订单
+        // 获取已确认的采购订单（只返回 IsConfirm >= 1 的明细）
         public async Task<ActionResult<ApiResult>> GetConfirmedOrders(OrderDetailsDto detailsDto)
         {
             // 从 OrderDetails 为主表，关联 PurchaseOrder 和 Material
             var queryable = _context.OrderDetails
                 .Include(od => od.PurchaseOrder)
                 .Include(od => od.Material)
-                .Where(od => !od.PurchaseOrder.IsDel);
+                .Where(od => !od.PurchaseOrder.IsDel && od.IsConfirm == 1);
 
             // 按采购订单编号过滤
             if (!string.IsNullOrWhiteSpace(detailsDto.OrderCode))

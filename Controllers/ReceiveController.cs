@@ -50,7 +50,7 @@ namespace backend.Controllers
             if (deliveryNote == null)
                 return NotFound(new { code = 404, message = "送货单不存在" });
 
-            if (deliveryNote.Status)
+            if (deliveryNote.Status >= 2)
                 return BadRequest(new { code = 400, message = "该送货单已完成收料，不允许重复收料" });
 
             var receiveUser = await _context.Users
@@ -128,7 +128,7 @@ namespace backend.Controllers
                     if (!materialDict.TryGetValue(item.MaterialCode, out var materialId))
                         return BadRequest(new { code = 400, message = $"物料不存在：{item.MaterialCode}" });
 
-                    var deliveryDetail = deliveryDetails.FirstOrDefault(dd => dd.ReceivedQty <= dd.Quantity);
+                    var deliveryDetail = deliveryDetails.FirstOrDefault(dd => dd.ReceivedQty < dd.Quantity);
                     if (deliveryDetail == null)
                         return BadRequest(new { code = 400, message = $"物料 {item.MaterialCode} 已全部完成收料，不可重复收料" });
 
@@ -185,23 +185,37 @@ namespace backend.Controllers
 
             _context.ReceiveDetails.AddRange(receiveDetails);
 
-            bool isFullyReceived = deliveryNote.DeliveryDetails.All(dd => dd.IsDel || dd.ReceivedQty >= dd.Quantity);
-            if (isFullyReceived)
+            // ========== 更新订单明细 IsConfirm = 4（已收货，仅当累计收料 ≥ 送货数量时） ==========
+            foreach (var dd in deliveryNote.DeliveryDetails.Where(dd => !dd.IsDel))
             {
-                deliveryNote.Status = true;
+                if (dd.ReceivedQty >= dd.Quantity && dd.OrderDetail != null && dd.OrderDetail.IsConfirm < 4)
+                {
+                    dd.OrderDetail.IsConfirm = 4;
+                }
+            }
+
+            // ========== 送货单是否全部收完 → 更新送货单状态 ==========
+            bool noteFullyReceived = deliveryNote.DeliveryDetails.All(dd => dd.IsDel || dd.ReceivedQty >= dd.Quantity);
+            if (noteFullyReceived)
+            {
+                deliveryNote.Status = 2;
                 deliveryNote.DeliveryDate = DateTime.Now;
             }
 
-            // 全部收料 → 更新关联采购订单状态为 4（已收货）
-            if (isFullyReceived)
-            {
-                var orders = deliveryNote.DeliveryDetails
-                    .Where(dd => !dd.IsDel && dd.OrderDetail?.PurchaseOrder != null)
-                    .Select(dd => dd.OrderDetail.PurchaseOrder)
-                    .DistinctBy(o => o.OrderID)
-                    .ToList();
+            // ========== 检查各采购订单是否全部明细已收货 → 更新主档状态为 4 ==========
+            var involvedOrders = deliveryNote.DeliveryDetails
+                .Where(dd => !dd.IsDel && dd.OrderDetail?.PurchaseOrder != null)
+                .Select(dd => dd.OrderDetail.PurchaseOrder)
+                .DistinctBy(o => o.OrderID)
+                .ToList();
 
-                foreach (var order in orders)
+            foreach (var order in involvedOrders)
+            {
+                var allDetails = await _context.OrderDetails
+                    .Where(od => od.OrderID == order.OrderID)
+                    .ToListAsync();
+
+                if (allDetails.All(od => od.IsConfirm >= 4) && order.Status < 4)
                 {
                     order.Status = 4;
                     order.UpdateByID = receiveCreateDto.ReceiveUserID;
@@ -274,7 +288,7 @@ namespace backend.Controllers
                     receiveRecord.ReceiveDate,
                     receiveRecord.Memo,
                     DetailCount = receiveDetails.Count,
-                    IsFullyReceived = isFullyReceived,
+                    IsFullyReceived = noteFullyReceived,
                     Warnings = warnings.Count > 0 ? warnings : null
                 }
             });

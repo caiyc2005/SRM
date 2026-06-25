@@ -23,7 +23,7 @@ namespace backend.Models
         public string SupplierName { get; set; }
 
         [Required]
-        public bool Status { get; set; }
+        public int Status { get; set; }
 
         public DateTime? ExpectedDate { get; set; }
 
