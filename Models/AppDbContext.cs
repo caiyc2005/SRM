@@ -117,6 +117,19 @@ namespace backend.Models
             {
                 entity.ToTable("OrderDetail");
                 entity.HasKey(e => e.OrderDetailID);
+
+                // OrderDetail -> PurchaseOrder（通过 OrderID）
+                entity.HasOne(e => e.PurchaseOrder)
+                      .WithMany(p => p.OrderDetails)
+                      .HasForeignKey(e => e.OrderID)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                // OrderDetail -> Material（通过 MaterialCode，关联 Material.MaterialCode 而非主键 MaterialID）
+                entity.HasOne(e => e.Material)
+                      .WithMany()
+                      .HasForeignKey(e => e.MaterialCode)
+                      .HasPrincipalKey(e => e.MaterialCode)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
 
             // DeliveryNote 配置

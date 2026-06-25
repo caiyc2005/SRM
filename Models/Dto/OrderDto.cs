@@ -18,12 +18,19 @@ namespace backend.Models.Dto
         public int PageSize { get; set; } = 20;
     }
 
+    public class OrderDetailsDto
+    {
+        public string? OrderCode { get; set; }
+        public string? SupplierID { get; set; }
+        public bool IsConfirm { get; set; }
+        public int PageIndex { get; set; } = 1;
+        public int PageSize { get; set; } = 20;
+    }
+
     public class ConfirmOrderDetailDto
     {
         public string orderDetailID { get; set; }
         //public List<string> OrderDetailIDs { get; set; } = new List<string>();
-
-
     }
 
     /// <summary>
