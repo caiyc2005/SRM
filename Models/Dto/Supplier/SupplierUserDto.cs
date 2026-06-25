@@ -8,7 +8,6 @@ namespace backend.Models.Dto.Supplier
         public string SupplierID { get; set; } = string.Empty;
         public string UserCode { get; set; } = string.Empty;
         public string UserName { get; set; } = string.Empty;
-        public string Password { get; set; } = "123456";
         public string? Memo { get; set; }
     }
 

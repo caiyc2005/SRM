@@ -267,7 +267,7 @@ namespace backend.Controllers
                 UserID = Guid.NewGuid().ToString(),
                 UserCode = dto.UserCode,
                 UserName = dto.UserName,
-                Password = _passwordService.HashPassword(dto.Password),
+                Password = _passwordService.HashPassword("123456"),
                 IsDel = false,
                 CreateTime = DateTime.Now,
                 Memo = dto.Memo
