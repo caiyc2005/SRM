@@ -109,6 +109,7 @@ namespace backend.Controllers
         [HttpPost]
         public async Task<ActionResult<ApiResult>> GetOrdersByList(OrderQueryDto query)
         {
+            #region （暂时没用）限制至少填写一个查询条件
             //bool hasCondition = !string.IsNullOrWhiteSpace(query.OrderCode)
             //    || !string.IsNullOrWhiteSpace(query.SupplierID)
             //    || query.Status.HasValue
@@ -117,6 +118,7 @@ namespace backend.Controllers
 
             //if (!hasCondition)
             //    return BadRequest(ApiResult.Fail("至少填写一个查询条件"));
+            #endregion
 
             var queryable = _context.PurchaseOrders
                 .Where(o => !o.IsDel);
