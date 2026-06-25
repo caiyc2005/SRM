@@ -200,6 +200,18 @@ namespace backend.Controllers
             if (detailsDto.IsConfirm.HasValue)
                 queryable = queryable.Where(od => od.IsConfirm == detailsDto.IsConfirm.Value);
 
+            // ========== 供应商权限校验：供应商只能查看自己的订单 ==========
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrWhiteSpace(currentUserId))
+            {
+                var supplierUser = await _context.SupplierUsers
+                    .FirstOrDefaultAsync(su => su.UserID == currentUserId);
+                if (supplierUser != null)
+                {
+                    queryable = queryable.Where(od => od.PurchaseOrder.SupplierID == supplierUser.SupplierID);
+                }
+            }
+
             // 统计总数
             var total = await queryable.CountAsync();
 
