@@ -27,6 +27,8 @@ namespace backend.Models
 
         [Column(TypeName = "decimal(18,4)")]
         public decimal? Amount { get; set; }
+        public bool IsConfirm { get; set; } = false;
+
 
         // 外键关联：多个明细属于一个采购订单
         [ForeignKey(nameof(OrderID))]
