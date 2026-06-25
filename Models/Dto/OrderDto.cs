@@ -5,6 +5,18 @@ namespace backend.Models.Dto
         public string orderID { get; set; }
     }
 
+    public class OrderQueryDto
+    {
+        public string? OrderCode { get; set; }
+        public string? SupplierID { get; set; }
+        public int? Status { get; set; }
+        public DateTime? StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        public string? SortField { get; set; }
+        public string? SortOrder { get; set; }
+        public int PageIndex { get; set; } = 1;
+        public int PageSize { get; set; } = 20;
+    }
 
     /// <summary>
     /// 创建采购订单请求 DTO
