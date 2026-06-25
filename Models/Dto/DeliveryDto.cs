@@ -55,12 +55,8 @@
         ///// </summary>
         //public string SupplierID { get; set; } = string.Empty;
 
+        public string noteID { get; set; }
 
-
-        /// <summary>
-        /// 供应商名称（可选）
-        /// </summary>
-        public string? SupplierName { get; set; }
         /// <summary>
         /// 预计送达时间（可选）
         /// </summary>

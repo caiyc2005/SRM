@@ -223,98 +223,97 @@ namespace backend.Controllers
         }
 
         /// <summary>
-        /// 供应商确认发货
+        /// 供应商确认发货 — 根据送货单ID，更新对应订单明细为已发货，同订单全部发货时更新主档状态
         /// </summary>
         [HttpPost]
         [Authorize(Roles = "admin,supplier")]
         public async Task<IActionResult> DeliveryConfirm(ConfirmDeliveryDto confirmDto)
         {
-            if (string.IsNullOrWhiteSpace(confirmDto.OrderID))
-                return BadRequest(new { code = 400, message = "采购订单ID不能为空" });
+            if (string.IsNullOrWhiteSpace(confirmDto.noteID))
+                return BadRequest(new { code = 400, message = "送货单ID不能为空" });
 
-            if (string.IsNullOrWhiteSpace(confirmDto.SupplierID))
-                return BadRequest(new { code = 400, message = "供应商ID不能为空" });
+            // ========== 加载送货单及明细 ==========
+            var deliveryNote = await _context.DeliveryNotes
+                .Include(d => d.DeliveryDetails)
+                .FirstOrDefaultAsync(d => d.NoteID == confirmDto.noteID && !d.IsDel);
 
-            var purchaseOrder = await _context.PurchaseOrders
-                .Include(o => o.Supplier)
-                .Include(o => o.OrderDetails)
-                .FirstOrDefaultAsync(o => o.OrderID == confirmDto.OrderID && !o.IsDel);
+            if (deliveryNote == null)
+                return NotFound(new { code = 404, message = "送货单不存在" });
 
-            if (purchaseOrder == null)
-                return NotFound(new { code = 404, message = "采购订单不存在" });
+            if (deliveryNote.Status)
+                return BadRequest(new { code = 400, message = "该送货单已完成发货，无需重复操作" });
 
-            if (purchaseOrder.SupplierID != confirmDto.SupplierID)
-                return BadRequest(new { code = 400, message = "供应商与订单不匹配" });
-
-            // ========== 供应商权限校验：只能确认自己的发货 ==========
             var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var currentUserName = User.FindFirst(ClaimTypes.Name)?.Value;
+
+            // ========== 供应商权限校验 ==========
             if (!string.IsNullOrWhiteSpace(currentUserId))
             {
                 var currentSupplier = await _context.Suppliers
                     .FirstOrDefaultAsync(s => s.UserID == currentUserId);
-                if (currentSupplier != null && currentSupplier.SupplierID != confirmDto.SupplierID)
+                if (currentSupplier != null && currentSupplier.SupplierID != deliveryNote.SupplierID)
                     return BadRequest(new { code = 400, message = "只能确认当前供应商的发货" });
             }
 
-            if (purchaseOrder.Status != 2)
-            {
-                string statusMsg = purchaseOrder.Status switch
-                {
-                    0 => "订单待确认，无需发货",
-                    1 => "订单已确认，请等待发货通知",
-                    3 => "订单已完成发货，无需重复操作",
-                    _ => "订单状态不允许发货"
-                };
-                return BadRequest(new { code = 400, message = statusMsg });
-            }
-
-            // ========== 找到该采购订单关联的送货明细（通过 DeliveryDetail → OrderDetail） ==========
-            var deliveryDetails = await _context.DeliveryDetails
-                .Include(dd => dd.DeliveryNote)
-                .Where(dd => !dd.IsDel && dd.OrderDetail.PurchaseOrder.OrderID == confirmDto.OrderID)
-                .ToListAsync();
-
-            var deliveryNotes = deliveryDetails
-                .Select(dd => dd.DeliveryNote)
-                .Where(d => d != null && !d.IsDel && !d.Status)
-                .Distinct()
-                .ToList();
-
-            // ========== 更新订单明细状态为 3（已发货） ==========
-            var detailOrderIDs = deliveryDetails
+            // ========== 获取该送货单涉及的所有 OrderDetailID ==========
+            var orderDetailIDs = deliveryNote.DeliveryDetails
+                .Where(dd => !dd.IsDel)
                 .Select(dd => dd.OrderDetailID)
                 .Distinct()
                 .ToList();
 
-            var affectedOrderDetails = purchaseOrder.OrderDetails?
-                .Where(od => detailOrderIDs.Contains(od.OrderDetailID) && od.IsConfirm < 3)
-                .ToList() ?? new List<OrderDetail>();
+            if (orderDetailIDs.Count == 0)
+                return BadRequest(new { code = 400, message = "送货单没有有效的明细" });
 
-            foreach (var od in affectedOrderDetails)
-            {
-                od.IsConfirm = 3;
-            }
+            // ========== 加载对应的订单明细及采购订单 ==========
+            var orderDetails = await _context.OrderDetails
+                .Include(od => od.PurchaseOrder)
+                .Where(od => orderDetailIDs.Contains(od.OrderDetailID))
+                .ToListAsync();
 
-            // ========== 更新送货单的发货日期 ==========
-            foreach (var deliveryNote in deliveryNotes)
+            // ========== 更新订单明细 IsConfirm = 3（已发货），跳过已是 3 的 ==========
+            var updatedCount = 0;
+            foreach (var od in orderDetails)
             {
-                deliveryNote.DeliveryDate = DateTime.Now;
-                if (confirmDto.ExpectedDeliveryDate.HasValue)
+                if (od.IsConfirm < 3)
                 {
-                    deliveryNote.ExpectedDate = confirmDto.ExpectedDeliveryDate;
+                    od.IsConfirm = 3;
+                    updatedCount++;
                 }
             }
 
-            // ========== 判断是否全部明细都已发货 → 更新采购订单主档状态 ==========
-            bool allDelivered = purchaseOrder.OrderDetails?.All(od => od.IsConfirm >= 3) ?? false;
-            if (allDelivered)
+            // ========== 更新送货单状态 ==========
+            deliveryNote.Status = true;
+            deliveryNote.DeliveryDate = DateTime.Now;
+            if (confirmDto.ExpectedDeliveryDate.HasValue)
             {
-                purchaseOrder.Status = 3;
-                purchaseOrder.UpdateTime = DateTime.Now;
+                deliveryNote.ExpectedDate = confirmDto.ExpectedDeliveryDate;
+            }
 
-                var currentUserName = User.FindFirst(ClaimTypes.Name)?.Value;
-                purchaseOrder.UpdateByID = currentUserId;
-                purchaseOrder.UpdateByName = currentUserName;
+            // ========== 按采购订单分组，检查是否全部明细都已发货 ==========
+            var orderGroups = orderDetails
+                .Where(od => od.PurchaseOrder != null)
+                .GroupBy(od => od.PurchaseOrder)
+                .ToList();
+
+            var updatedOrderIds = new List<string>();
+            foreach (var group in orderGroups)
+            {
+                var order = group.Key;
+                // 检查该采购订单的所有明细（不限于本次送货的）
+                var allOrderDetails = await _context.OrderDetails
+                    .Where(od => od.OrderID == order.OrderID)
+                    .ToListAsync();
+
+                bool allDelivered = allOrderDetails.All(od => od.IsConfirm >= 3);
+                if (allDelivered && order.Status < 3)
+                {
+                    order.Status = 3;
+                    order.UpdateTime = DateTime.Now;
+                    order.UpdateByID = currentUserId;
+                    order.UpdateByName = currentUserName;
+                    updatedOrderIds.Add(order.OrderID);
+                }
             }
 
             await _context.SaveChangesAsync();
@@ -325,10 +324,12 @@ namespace backend.Controllers
                 message = "发货确认成功",
                 data = new
                 {
-                    purchaseOrder.OrderID,
-                    purchaseOrder.OrderCode,
-                    purchaseOrder.Status,
-                    purchaseOrder.UpdateTime
+                    deliveryNote.NoteID,
+                    deliveryNote.NoteCode,
+                    deliveryNote.DeliveryDate,
+                    DetailCount = orderDetailIDs.Count,
+                    UpdatedDetailCount = updatedCount,
+                    FullyDeliveredOrders = updatedOrderIds
                 }
             });
         }
