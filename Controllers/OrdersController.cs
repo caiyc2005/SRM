@@ -128,6 +128,14 @@ namespace backend.Controllers
             if (detailsDto.IsConfirm.HasValue)
                 queryable = queryable.Where(od => od.IsConfirm == detailsDto.IsConfirm.Value);
 
+            // 按采购订单创建时间起始过滤
+            if (detailsDto.StartTime.HasValue)
+                queryable = queryable.Where(od => od.PurchaseOrder.CreateTime >= detailsDto.StartTime.Value);
+
+            // 按采购订单创建时间截止过滤（包含当天最后一刻）
+            if (detailsDto.EndTime.HasValue)
+                queryable = queryable.Where(od => od.PurchaseOrder.CreateTime <= detailsDto.EndTime.Value.AddDays(1).AddTicks(-1));
+
             // 统计总数
             var total = await queryable.CountAsync();
 
