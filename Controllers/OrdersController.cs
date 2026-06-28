@@ -24,7 +24,7 @@ namespace backend.Controllers
         /// 创建采购订单
         /// </summary>
         [HttpPost]
-        public async Task<ActionResult<ApiResult>> CreateOrder([FromBody] OrderDto dto)
+        public async Task<ActionResult<ApiResult>> CreateOrder(OrderDto dto)
         {
             // ========== 参数校验 ==========
             if (string.IsNullOrWhiteSpace(dto.SupplierID))
