@@ -10,8 +10,8 @@ namespace backend.Models.Dto
         public string? OrderCode { get; set; }
         public string? SupplierID { get; set; }
         public int? Status { get; set; }
-        public DateTime? StartDate { get; set; }
-        public DateTime? EndDate { get; set; }
+        public DateTime? StartTime { get; set; }
+        public DateTime? EndTime { get; set; }
         public string? SortField { get; set; }
         public string? SortOrder { get; set; }
         public int PageIndex { get; set; } = 1;

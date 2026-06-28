@@ -292,11 +292,12 @@ namespace backend.Controllers
             if (query.Status.HasValue)
                 queryable = queryable.Where(o => o.Status == query.Status.Value);
 
-            if (query.StartDate.HasValue)
-                queryable = queryable.Where(o => o.CreateTime >= query.StartDate.Value);
+            if (query.StartTime.HasValue)
+                queryable = queryable.Where(o => o.CreateTime >= query.StartTime.Value);
+            Console.WriteLine("query.StartTime=========================" + query.StartTime);
 
-            if (query.EndDate.HasValue)
-                queryable = queryable.Where(o => o.CreateTime <= query.EndDate.Value.AddDays(1).AddTicks(-1));
+            if (query.EndTime.HasValue)
+                queryable = queryable.Where(o => o.CreateTime <= query.EndTime.Value.AddDays(1).AddTicks(-1));
 
             var total = await queryable.CountAsync();
 
