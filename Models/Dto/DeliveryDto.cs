@@ -15,6 +15,10 @@
         public DateTime? StartTime { get; set; }
         /// <summary>创建时间截止</summary>
         public DateTime? EndTime { get; set; }
+        /// <summary>发货时间起始</summary>
+        public DateTime? DeliveryStartTime { get; set; }
+        /// <summary>发货时间截止</summary>
+        public DateTime? DeliveryEndTime { get; set; }
         public int page { get; set; } = 1;
         public int pageSize { get; set; } = 10;
     }
