@@ -22,6 +22,30 @@
         public int page { get; set; } = 1;
         public int pageSize { get; set; } = 10;
     }
+
+
+    public class DeliveryGetDto2
+    {
+        public string? noteCode { get; set; }
+
+        public string? orderCode { get; set; }
+        public string? supplierId { get; set; }
+
+        public string? userID { get; set; }//新增
+        public int? status { get; set; }
+        public bool? isReceived { get; set; }
+        /// <summary>创建时间起始</summary>
+        public DateTime? StartTime { get; set; }
+        /// <summary>创建时间截止</summary>
+        public DateTime? EndTime { get; set; }
+        /// <summary>发货时间起始</summary>
+        public DateTime? DeliveryStartTime { get; set; }
+        /// <summary>发货时间截止</summary>
+        public DateTime? DeliveryEndTime { get; set; }
+        public int page { get; set; } = 1;
+        public int pageSize { get; set; } = 10;
+    }
+
     public class DeliveryDto
     {
         /// <summary>

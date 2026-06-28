@@ -486,6 +486,85 @@ namespace backend.Controllers
             });
         }
 
-        
+
+        [HttpPost]
+        [Authorize(Roles = "admin,supplier,whclerk")]
+        public async Task<IActionResult> GetDeliveryNoteNotIn(DeliveryGetDto2 deliveryGetDto)
+        {
+            var query = _context.DeliveryNotes.Where(d => !d.IsDel).AsQueryable();
+
+            query = query.Where(d => d.Status != 2 && d.Status<=1);
+
+
+            // ========== 供应商权限校验：只能查看自己的送货单 ==========
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrWhiteSpace(currentUserId))
+            {
+                var currentSupplier = await _context.SupplierUsers
+                    .FirstOrDefaultAsync(su => su.UserID == currentUserId);
+                if (currentSupplier != null)
+                {
+                    Console.WriteLine($"当前供应商{currentSupplier.SupplierID}，筛选其送货单数据");
+                    query = query.Where(s => s.SupplierID == currentSupplier.SupplierID);
+                }
+            }
+
+            var allItems = await query
+                .OrderByDescending(d => d.CreatedTime)
+                .Select(d => new
+                {
+                    d.NoteID,
+                    d.NoteCode,
+                    d.SupplierID,
+                    d.SupplierName,
+                    SupplierCode = d.Supplier.SupplierCode,
+                    d.Status,
+                    d.ExpectedDate,
+                    d.DeliveryDate,
+                    d.CreateByName,
+                    d.CreatedTime,
+
+                    Details = d.DeliveryDetails
+                        .Where(dd => !dd.IsDel)  // ✅ 加上软删除过滤（推荐）
+                        .Select(dd => new
+                        {
+                            DeliveryDetailID = dd.DeliveryDetailID,
+                            dd.MaterialCode,
+                            Spec = _context.Materials.Where(m => m.MaterialCode == dd.MaterialCode).Select(m => m.Spec).FirstOrDefault() ?? string.Empty,
+                            MaterialName = dd.MaterialName ?? string.Empty, // 防 null
+                            Unit = dd.Unit ?? string.Empty,
+                            dd.Quantity,
+                            dd.ReceivedQty,
+
+                            unitPrice = dd.UnitPrice,
+                            amount = dd.Amount,
+
+                            OrderCode = dd.OrderDetail.PurchaseOrder.OrderCode,
+                        })
+                        .ToList()
+                })
+                .ToListAsync();
+
+            var pagedItems = allItems
+                .Skip((deliveryGetDto.page - 1) * deliveryGetDto.pageSize)
+                .Take(deliveryGetDto.pageSize)
+                .ToList();
+
+            var total = allItems.Count;
+
+            return Ok(new
+            {
+                code = 200,
+                data = new
+                {
+                    items = pagedItems,
+                    total,
+                    page = deliveryGetDto.page,
+                    pageSize = deliveryGetDto.pageSize
+                }
+            });
+        }
+
+
     }
 }
