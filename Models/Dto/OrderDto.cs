@@ -23,6 +23,10 @@ namespace backend.Models.Dto
         public string? OrderCode { get; set; }
         public string? SupplierID { get; set; }
         public int? IsConfirm { get; set; }
+        /// <summary>创建时间起始（筛选采购订单的创建时间）</summary>
+        public DateTime? StartTime { get; set; }
+        /// <summary>创建时间截止（筛选采购订单的创建时间）</summary>
+        public DateTime? EndTime { get; set; }
         public int PageIndex { get; set; } = 1;
         public int PageSize { get; set; } = 20;
     }

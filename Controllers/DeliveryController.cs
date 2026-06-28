@@ -401,6 +401,14 @@ namespace backend.Controllers
             if (deliveryGetDto.isReceived == false)
                 query = query.Where(d => d.Status != 2);
 
+            // 按创建时间起始过滤
+            if (deliveryGetDto.StartTime.HasValue)
+                query = query.Where(d => d.CreatedTime >= deliveryGetDto.StartTime.Value);
+
+            // 按创建时间截止过滤（包含当天最后一刻）
+            if (deliveryGetDto.EndTime.HasValue)
+                query = query.Where(d => d.CreatedTime <= deliveryGetDto.EndTime.Value.AddDays(1).AddTicks(-1));
+
             // ========== 供应商权限校验：只能查看自己的送货单 ==========
             var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (!string.IsNullOrWhiteSpace(currentUserId))

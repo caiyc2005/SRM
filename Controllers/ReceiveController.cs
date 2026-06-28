@@ -309,6 +309,14 @@ namespace backend.Controllers
             if (!string.IsNullOrWhiteSpace(receiveGetDto.SupplierId))
                 query = query.Where(r => r.SupplierID == receiveGetDto.SupplierId);
 
+            // 按创建时间起始过滤
+            if (receiveGetDto.StartTime.HasValue)
+                query = query.Where(r => r.ReceiveDate >= receiveGetDto.StartTime.Value);
+
+            // 按创建时间截止过滤（包含当天最后一刻）
+            if (receiveGetDto.EndTime.HasValue)
+                query = query.Where(r => r.ReceiveDate <= receiveGetDto.EndTime.Value.AddDays(1).AddTicks(-1));
+
             var total = await query.CountAsync();
 
             var allItems = await query
