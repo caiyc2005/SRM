@@ -113,8 +113,11 @@ namespace backend.Controllers
             var warnings = new List<string>();
             if (receiveCreateDto.Details != null && receiveCreateDto.Details.Any())
             {
+                var validDetails = receiveCreateDto.Details.Where(d => d.ReceivedQty > 0).ToList();
+                if (validDetails.Count == 0)
+                    return BadRequest(new { code = 400, message = "收料总数不能为零，至少需要一项物料有收料数量" });
                 receiveDetails = new List<ReceiveDetail>();
-                foreach (var item in receiveCreateDto.Details)
+                foreach (var item in validDetails)
                 {
                     if (string.IsNullOrWhiteSpace(item.MaterialCode))
                         return BadRequest(new { code = 400, message = "物料编码不能为空" });

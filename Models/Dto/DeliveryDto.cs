@@ -59,6 +59,11 @@
         public DateTime? ExpectedDate { get; set; }
 
         /// <summary>
+        /// 实际发货时间（可选，生成送货单时可设置）
+        /// </summary>
+        public DateTime? DeliveryDate { get; set; }
+
+        /// <summary>
         /// 创建人ID（必填）
         /// </summary>
         public string CreateByID { get; set; } = string.Empty;
