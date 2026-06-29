@@ -486,42 +486,53 @@ namespace backend.Controllers
         [HttpPost]
         public async Task<ActionResult<ApiResult>> ConfirmOrderDetail(ConfirmOrderDetailDto dto)
         {
-            // 单条确认采购订单
-            if (dto.orderDetailID == null)
+            if (dto.OrderDetailIDs == null || dto.OrderDetailIDs.Count == 0)
                 return BadRequest(ApiResult.Fail("订单明细ID不能为空"));
 
-            var orderDetails = await _context.OrderDetails
+            // 先查出本次请求要确认的明细（仅未确认的）
+            var targetDetails = await _context.OrderDetails
                 .Include(od => od.PurchaseOrder)
-                .Where(od => dto.orderDetailID.Contains(od.OrderDetailID) && od.IsConfirm==0)
+                .Where(od => dto.OrderDetailIDs.Contains(od.OrderDetailID) && od.IsConfirm == 0)
                 .ToListAsync();
 
-            if (orderDetails.Count == 0)
+            if (targetDetails.Count == 0)
                 return BadRequest(ApiResult.Fail("没有可确认的订单明细"));
 
-            var orderIds = orderDetails.Select(od => od.OrderID).Distinct().ToList();
+            var orderIds = targetDetails.Select(od => od.OrderID).Distinct().ToList();
             if (orderIds.Count > 1)
                 return BadRequest(ApiResult.Fail("一次只能确认同一个采购订单的明细"));
 
-            var order = orderDetails.First().PurchaseOrder;
-            if (order == null || order.IsDel)
+            var firstDetail = targetDetails.FirstOrDefault();
+            if (firstDetail?.PurchaseOrder == null || firstDetail.PurchaseOrder.IsDel)
                 return NotFound(ApiResult.Fail("订单不存在"));
-            if (orderDetails.FirstOrDefault().IsConfirm==1)
-            {
-                return BadRequest(ApiResult.Fail("该订单下的此物料不允许再次确认"));
-            }
 
+            var orderId = firstDetail.OrderID;
             var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             var currentUserName = User.FindFirst(ClaimTypes.Name)?.Value;
 
+            // 重新加载采购订单及其下所有明细（确保检查完整性时不会遗漏）
+            var order = await _context.PurchaseOrders
+                .Include(o => o.OrderDetails)
+                .FirstOrDefaultAsync(o => o.OrderID == orderId && !o.IsDel);
+
+            if (order == null)
+                return NotFound(ApiResult.Fail("订单不存在"));
+
             List<string> confirmedMaterialIDs = new List<string>();
-            foreach (var detail in orderDetails)
+            foreach (var detail in targetDetails)
             {
-                detail.IsConfirm = 1;
-                confirmedMaterialIDs.Add(detail.MaterialID);
+                // 从已加载的 order.OrderDetails 中找到对应实体做修改
+                var od = order.OrderDetails.FirstOrDefault(x => x.OrderDetailID == detail.OrderDetailID);
+                if (od != null && od.IsConfirm == 0)
+                {
+                    od.IsConfirm = 1;
+                    confirmedMaterialIDs.Add(od.MaterialID);
+                }
             }
 
-            //如果所有的订单明细表里的都已经是已确认或者其他状态了，采购订单才会被确认为已确认。
-            bool allConfirmed = order.OrderDetails.All(od => od.IsConfirm>=1);
+            // 判断该采购订单下所有明细是否都已完成确认（基于已加载的完整集合，避免查数据库延迟不一致）
+            bool allConfirmed = order.OrderDetails.All(od => od.IsConfirm >= 1);
+
             if (allConfirmed)
             {
                 order.Status = 1;
@@ -532,6 +543,7 @@ namespace backend.Controllers
                 }
                 order.UpdateTime = DateTime.Now;
             }
+
             await _context.SaveChangesAsync();
 
             return Ok(ApiResult.Ok(allConfirmed ? "订单确认成功" : "部分物料确认成功", new
@@ -539,7 +551,6 @@ namespace backend.Controllers
                 order.OrderID,
                 order.OrderCode,
                 order.Status,
-                //StatusName = GetStatusName(order.Status),
                 ConfirmedMaterialIDs = confirmedMaterialIDs,
                 IsAllConfirmed = allConfirmed
             }));

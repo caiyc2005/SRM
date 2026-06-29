@@ -33,8 +33,7 @@ namespace backend.Models.Dto
 
     public class ConfirmOrderDetailDto
     {
-        public string orderDetailID { get; set; }
-        //public List<string> OrderDetailIDs { get; set; } = new List<string>();
+        public List<string> OrderDetailIDs { get; set; } = new List<string>();
     }
 
     /// <summary>
