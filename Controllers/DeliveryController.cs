@@ -143,9 +143,9 @@ namespace backend.Controllers
                 NoteCode = noteCode,
                 SupplierID = distinctSupplierIDs[0],
                 SupplierName = primaryOrder.SupplierName,
-                Status = 0,
+                Status = 1,
                 ExpectedDate = deliveryDto.ExpectedDate,
-                DeliveryDate = null,
+                DeliveryDate = deliveryDto.DeliveryDate ?? DateTime.Now,
                 CreateByID = deliveryDto.CreateByID,
                 CreateByName = deliveryDto.CreateByName,
                 CreatedTime = DateTime.Now,
@@ -205,7 +205,7 @@ namespace backend.Controllers
 
                 if (allDetails.All(od => od.IsConfirm >= 2))
                 {
-                    order.Status = 2;
+                    order.Status = 3;
                     order.UpdateTime = DateTime.Now;
                 }
             }
@@ -446,7 +446,7 @@ namespace backend.Controllers
                     d.CreatedTime,
                     
                     Details = d.DeliveryDetails
-                        .Where(dd => !dd.IsDel)  // ✅ 加上软删除过滤（推荐）
+                        .Where(dd => !dd.IsDel && dd.Quantity>dd.ReceivedQty)  // ✅ 加上软删除过滤（推荐）
                         .Select(dd => new
                         {
                             DeliveryDetailID = dd.DeliveryDetailID,
