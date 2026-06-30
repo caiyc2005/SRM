@@ -165,7 +165,7 @@ namespace backend.Controllers
                     Password = _passwordService.HashPassword("123456"),
                     IsDel = false,
                     CreateTime = DateTime.Now,
-                    //Memo = $"供应商用户 - {addSupplierDto.supplierName}"
+                    Memo = $"供应商 - {addSupplierDto.supplierName}"
                 };
                 _context.Users.Add(user);
                 newUserId = user.UserID;
@@ -204,7 +204,7 @@ namespace backend.Controllers
                     RoleName = "supplier",
                     IsDel = false,
                     CreateTime = DateTime.Now,
-                    Memo = "供应商角色"
+                    Memo = "供应商"
                 };
                 _context.Roles.Add(supplierRole);
             }
