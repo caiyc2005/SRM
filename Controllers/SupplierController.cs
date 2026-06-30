@@ -28,7 +28,7 @@ namespace backend.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpPost]
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin,purchase")]
         public async Task<ActionResult<ApiResult>> GetAllSuppliers()
         {
             var suppliers = await _context.Suppliers
