@@ -32,4 +32,30 @@ namespace backend.Models.Dto
         public string? SupplierID { get; set; }
         public bool IsMainAccount { get; set; }
     }
+
+    /// <summary>
+    /// 登录日志查询请求
+    /// </summary>
+    public class LoginLogQueryDto
+    {
+        public string? UserCode { get; set; }
+        public string? UserName { get; set; }
+        public DateTime? StartTime { get; set; }
+        public DateTime? EndTime { get; set; }
+        public int PageIndex { get; set; } = 1;
+        public int PageSize { get; set; } = 20;
+    }
+
+    /// <summary>
+    /// 登录日志项
+    /// </summary>
+    public class LoginLogItemDto
+    {
+        public string LoginLogID { get; set; } = string.Empty;
+        public string UserID { get; set; } = string.Empty;
+        public string UserCode { get; set; } = string.Empty;
+        public string UserName { get; set; } = string.Empty;
+        public DateTime LoginTime { get; set; }
+        public string? IPAddress { get; set; }
+    }
 }

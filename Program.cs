@@ -2,6 +2,7 @@ using System.Text;
 using backend.Models;
 using backend.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -93,6 +94,12 @@ namespace backend
             });
 
             var app = builder.Build();
+
+            // ========== 转发头中间件（获取真实客户端 IP） ==========
+            app.UseForwardedHeaders(new ForwardedHeadersOptions
+            {
+                ForwardedHeaders = ForwardedHeaders.XForwardedFor
+            });
 
             // ========== 中间件管道 ==========
             if (app.Environment.IsDevelopment())

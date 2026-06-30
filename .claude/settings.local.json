@@ -22,7 +22,9 @@
       "Bash(sqlcmd -S . -d SRM -Q \"SELECT COUNT\\(*\\) AS SupplierUserCount FROM SupplierUser; SELECT su.SupplierID, u.UserCode, u.UserName, su.IsMainAccount FROM SupplierUser su JOIN [User] u ON u.UserID = su.UserID\" -C)",
       "Bash(taskkill *)",
       "Bash(cmd.exe *)",
-      "Bash(dir /b \"D:\\\\SRM\\\\backend\\\\Migrations\\\\*.cs\")"
+      "Bash(dir /b \"D:\\\\SRM\\\\backend\\\\Migrations\\\\*.cs\")",
+      "Bash(dotnet clean *)",
+      "Bash(grep -v \"^$\")"
     ]
   }
 }

@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace backend.Controllers
 {
-    [Route("api/[controller]/[action]")]
+    [Route("[controller]/[action]")]
     [ApiController]
     public class LoginController : ControllerBase
     {
@@ -129,6 +129,13 @@ namespace backend.Controllers
             }
 
             // ========== 记录登录日志 ==========
+            // 优先取反向代理 X-Forwarded-For，再取直连 IP，IPv6 回环转成 127.0.0.1
+            var ipAddress = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+            if (string.IsNullOrWhiteSpace(ipAddress))
+                ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+            if (ipAddress == "::1")
+                ipAddress = "127.0.0.1";
+
             var loginLog = new LoginLog
             {
                 LoginLogID = Guid.NewGuid().ToString(),
@@ -136,7 +143,7 @@ namespace backend.Controllers
                 UserCode = user.UserCode,
                 UserName = user.UserName,
                 LoginTime = DateTime.Now,
-                IPAddress = HttpContext.Connection.RemoteIpAddress?.ToString()
+                IPAddress = ipAddress
             };
             _context.LoginLogs.Add(loginLog);
             await _context.SaveChangesAsync();
@@ -157,6 +164,53 @@ namespace backend.Controllers
                     IsMainAccount = isMainAccount
                 }
             });
+        }
+
+        /// <summary>
+        /// 查询登录日志（仅 admin）
+        /// </summary>
+        [HttpPost]
+        [Authorize(Roles = "admin")]
+        public async Task<ActionResult<ApiResult>> GetLoginLogs(LoginLogQueryDto queryDto)
+        {
+            var queryable = _context.LoginLogs.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(queryDto.UserCode))
+                queryable = queryable.Where(l => l.UserCode.Contains(queryDto.UserCode));
+
+            if (!string.IsNullOrWhiteSpace(queryDto.UserName))
+                queryable = queryable.Where(l => l.UserName.Contains(queryDto.UserName));
+
+            if (queryDto.StartTime.HasValue)
+                queryable = queryable.Where(l => l.LoginTime >= queryDto.StartTime.Value);
+
+            if (queryDto.EndTime.HasValue)
+                queryable = queryable.Where(l => l.LoginTime <= queryDto.EndTime.Value.AddDays(1).AddTicks(-1));
+
+            var total = await queryable.CountAsync();
+
+            var list = await queryable
+                .OrderByDescending(l => l.LoginTime)
+                .Skip((queryDto.PageIndex - 1) * queryDto.PageSize)
+                .Take(queryDto.PageSize)
+                .Select(l => new LoginLogItemDto
+                {
+                    LoginLogID = l.LoginLogID,
+                    UserID = l.UserID,
+                    UserCode = l.UserCode,
+                    UserName = l.UserName,
+                    LoginTime = l.LoginTime,
+                    IPAddress = l.IPAddress
+                })
+                .ToListAsync();
+
+            return Ok(ApiResult.Ok("查询成功", new
+            {
+                Total = total,
+                PageIndex = queryDto.PageIndex,
+                PageSize = queryDto.PageSize,
+                List = list
+            }));
         }
     }
 }
