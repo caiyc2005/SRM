@@ -44,16 +44,16 @@ namespace backend
 
             builder.Services.AddAuthorization();
 
-            // ========== CORS（允许前端跨域访问） ==========
-            //builder.Services.AddCors(options =>
-            //{
-            //    options.AddDefaultPolicy(policy =>
-            //    {
-            //        policy.AllowAnyOrigin()
-            //              .AllowAnyMethod()
-            //              .AllowAnyHeader();
-            //    });
-            //});
+             //========== CORS（允许前端跨域访问） ==========
+            builder.Services.AddCors(options =>
+            {
+                options.AddDefaultPolicy(policy =>
+                {
+                    policy.AllowAnyOrigin()
+                          .AllowAnyMethod()
+                          .AllowAnyHeader();
+                });
+            });
 
             // ========== 服务注册 ==========
             builder.Services.AddScoped<IJwtService, JwtService>();
@@ -103,7 +103,7 @@ namespace backend
 
             app.UseHttpsRedirection();
 
-            //app.UseCors();
+            app.UseCors();
 
             app.UseAuthentication(); // 必须先于 UseAuthorization
             app.UseAuthorization();

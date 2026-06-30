@@ -86,7 +86,7 @@ namespace backend.Controllers
                 return Ok(new LoginResponse
                 {
                     Success = false,
-                    Message = "账号或密码错误1",
+                    Message = "账号或密码错误",
                 });
             }
 
@@ -96,7 +96,7 @@ namespace backend.Controllers
                 return Ok(new LoginResponse
                 {
                     Success = false,
-                    Message = "账号或密码错误2",
+                    Message = "账号或密码错误",
                 });
             }
 
