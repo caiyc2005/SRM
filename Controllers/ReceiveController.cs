@@ -354,7 +354,8 @@ namespace backend.Controllers
                             rd.DiffQty,
                             Unit = rd.DeliveryDetail.Unit ?? string.Empty,
                             UnitPrice = rd.DeliveryDetail.UnitPrice,
-                            Amount = rd.ReceivedQty * (rd.DeliveryDetail.UnitPrice ?? 0)
+                            Amount = rd.ReceivedQty * (rd.DeliveryDetail.UnitPrice ?? 0),
+                            OrderCode = rd.DeliveryDetail.OrderDetail.PurchaseOrder.OrderCode
                         })
                         .ToList()
                 })
