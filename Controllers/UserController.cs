@@ -4,6 +4,7 @@ using backend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace backend.Controllers
 {
@@ -341,6 +342,41 @@ namespace backend.Controllers
             await _context.SaveChangesAsync();
 
             return Ok(ApiResult.Ok("用户已从角色移除"));
+        }
+
+        /// <summary>
+        /// 修改当前登录用户的密码
+        /// </summary>
+        [HttpPost]
+        [AllowAnonymous]
+        public async Task<ActionResult<ApiResult>> ChangePassword([FromBody] ChangePasswordRequest request)
+        {
+            // 获取当前登录用户ID
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrWhiteSpace(currentUserId))
+                return BadRequest(ApiResult.Fail("无法获取当前用户信息"));
+
+            // 参数校验
+            if (string.IsNullOrWhiteSpace(request.OldPassword))
+                return BadRequest(ApiResult.Fail("原密码不能为空"));
+            if (string.IsNullOrWhiteSpace(request.NewPassword))
+                return BadRequest(ApiResult.Fail("新密码不能为空"));
+
+            // 查找用户
+            var user = await _context.Users.FindAsync(currentUserId);
+            if (user == null)
+                return NotFound(ApiResult.Fail("用户不存在"));
+
+            // 验证原密码
+            if (!_passwordService.VerifyPassword(user.Password, request.OldPassword))
+                return BadRequest(ApiResult.Fail("原密码不正确"));
+
+            // 设置新密码
+            user.Password = _passwordService.HashPassword(request.NewPassword);
+            user.UpdateTime = DateTime.Now;
+            await _context.SaveChangesAsync();
+
+            return Ok(ApiResult.Ok("密码修改成功"));
         }
     }
 }
