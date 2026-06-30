@@ -498,9 +498,9 @@ namespace backend.Controllers
             if (targetDetails.Count == 0)
                 return BadRequest(ApiResult.Fail("没有可确认的订单明细"));
 
-            var orderIds = targetDetails.Select(od => od.OrderID).Distinct().ToList();
-            if (orderIds.Count > 1)
-                return BadRequest(ApiResult.Fail("一次只能确认同一个采购订单的明细"));
+            //var orderIds = targetDetails.Select(od => od.OrderID).Distinct().ToList();
+            //if (orderIds.Count > 1)
+            //    return BadRequest(ApiResult.Fail("一次只能确认同一个采购订单的明细"));
 
             var firstDetail = targetDetails.FirstOrDefault();
             if (firstDetail?.PurchaseOrder == null || firstDetail.PurchaseOrder.IsDel)
