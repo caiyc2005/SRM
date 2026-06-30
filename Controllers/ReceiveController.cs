@@ -70,23 +70,23 @@ namespace backend.Controllers
                 .ToDictionaryAsync(m => m.MaterialCode, m => m.MaterialID);
 
             var dateStr = DateTime.Now.ToString("yyyyMMdd");
+            var prefix = $"SL{dateStr}";
 
-            var todayMaxCode = await _context.ReceiveRecords
-                .Where(r => r.ReceiveCode.StartsWith($"SL{dateStr}") && !r.IsDel)
-                .OrderByDescending(r => r.ReceiveCode)
-                .FirstOrDefaultAsync();
+            // 查询当日所有收料单号，取最大数值序号（避免 D3 变长 + 字符串排序 Bug）
+            var todayCodes = await _context.ReceiveRecords
+                .Where(r => r.ReceiveCode.StartsWith(prefix) && !r.IsDel)
+                .Select(r => r.ReceiveCode)
+                .ToListAsync();
 
-            int sequence = 1;
-            if (todayMaxCode != null)
-            {
-                var lastNumStr = todayMaxCode.ReceiveCode.Substring(10);
-                if (int.TryParse(lastNumStr, out int lastNum))
-                {
-                    sequence = lastNum + 1;
-                }
-            }
+            int maxSeq = todayCodes
+                .Select(c => int.TryParse(c[prefix.Length..], out var n) ? n : 0)
+                .DefaultIfEmpty(0)
+                .Max();
 
-            var receiveCode = $"SL{dateStr}{sequence.ToString("D3")}";
+            var sequence = maxSeq + 1;
+            // 当日流水号超过 999 时归零（极少发生，兜底处理）
+            if (sequence > 999) sequence = 1;
+            var receiveCode = $"{prefix}{sequence:D3}";
 
             var receiveRecord = new ReceiveRecord
             {
