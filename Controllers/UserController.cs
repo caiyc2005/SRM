@@ -172,6 +172,8 @@ namespace backend.Controllers
         {
             if (string.IsNullOrWhiteSpace(request.RoleName))
                 return BadRequest(ApiResult.Fail("角色名称不能为空"));
+            if (string.IsNullOrWhiteSpace(request.Memo))
+                return BadRequest(ApiResult.Fail("角色中文名称不能为空"));
 
             // 检查角色名是否已存在
             var exists = await _context.Roles.AnyAsync(r => r.RoleName == request.RoleName);
