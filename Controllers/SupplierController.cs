@@ -309,12 +309,15 @@ namespace backend.Controllers
         }
 
         /// <summary>
-        /// 查询当前供应商主账号下的所有关联用户（仅主账号可查）
+        /// 查询指定供应商的关联用户列表（排除当前用户）
         /// </summary>
         [HttpPost]
         [Authorize(Roles = "admin,supplier")]
-        public async Task<ActionResult<ApiResult>> GetSupplierUsers()
+        public async Task<ActionResult<ApiResult>> GetSupplierUsers(GetSupplierChoosedID dto)
         {
+            if (string.IsNullOrWhiteSpace(dto.supplierID))
+                return BadRequest(ApiResult.Fail("供应商ID不能为空"));
+
             var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrWhiteSpace(currentUserId))
                 return BadRequest(ApiResult.Fail("无法获取当前用户信息"));
@@ -328,42 +331,26 @@ namespace backend.Controllers
                     (ur, r) => ur)
                 .AnyAsync();
 
-            var currentSupplierUser = await _context.SupplierUsers
-                .FirstOrDefaultAsync(su => su.UserID == currentUserId);
-
-            if (currentSupplierUser == null)
+            // 非 admin 用户：校验该供应商是否属于当前用户
+            if (!isAdmin)
             {
-                if (isAdmin)
-                {
-                    // admin 角色可以查看所有供应商的用户列表
-                    var allUsers = await _context.SupplierUsers
-                        .Join(_context.Users,
-                            su => su.UserID,
-                            u => u.UserID,
-                            (su, u) => new SupplierUserItemDto
-                            {
-                                SupplierUserID = su.SupplierUserID,
-                                UserID = su.UserID,
-                                UserCode = u.UserCode,
-                                UserName = u.UserName,
-                                IsMainAccount = su.IsMainAccount,
-                                CreatedAt = su.CreatedAt,
-                                Memo = u.Memo
-                            })
-                        .OrderByDescending(u => u.IsMainAccount)
-                        .ThenBy(u => u.CreatedAt)
-                        .ToListAsync();
+                var currentSupplierUser = await _context.SupplierUsers
+                    .FirstOrDefaultAsync(su => su.UserID == currentUserId);
 
-                    return Ok(ApiResult.Ok("查询成功", allUsers));
-                }
-                return BadRequest(ApiResult.Fail("当前用户不是供应商用户"));
+                if (currentSupplierUser == null)
+                    return BadRequest(ApiResult.Fail("当前用户不是供应商用户"));
+
+                if (!currentSupplierUser.IsMainAccount)
+                    return BadRequest(ApiResult.Fail("仅主账号可查询子账号列表"));
+
+                // 只能查自己所在供应商的用户
+                if (currentSupplierUser.SupplierID != dto.supplierID)
+                    return BadRequest(ApiResult.Fail("无权查看其他供应商的用户"));
             }
 
-            if (!currentSupplierUser.IsMainAccount)
-                return BadRequest(ApiResult.Fail("仅主账号可查询子账号列表"));
-
+            // 根据前端传入的 SupplierID 查询，并排除当前用户
             var users = await _context.SupplierUsers
-                .Where(su => su.SupplierID == currentSupplierUser.SupplierID)
+                .Where(su => su.SupplierID == dto.supplierID && su.UserID != currentUserId)
                 .Join(_context.Users,
                     su => su.UserID,
                     u => u.UserID,

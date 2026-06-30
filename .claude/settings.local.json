@@ -19,7 +19,10 @@
       "Bash(sqlcmd -S . -d SRM -Q \"SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'User' AND COLUMN_NAME = 'UserID'\" -C)",
       "Bash(taskkill /F /PID 32088)",
       "Bash(taskkill //PID 32088 //F)",
-      "Bash(sqlcmd -S . -d SRM -Q \"SELECT COUNT\\(*\\) AS SupplierUserCount FROM SupplierUser; SELECT su.SupplierID, u.UserCode, u.UserName, su.IsMainAccount FROM SupplierUser su JOIN [User] u ON u.UserID = su.UserID\" -C)"
+      "Bash(sqlcmd -S . -d SRM -Q \"SELECT COUNT\\(*\\) AS SupplierUserCount FROM SupplierUser; SELECT su.SupplierID, u.UserCode, u.UserName, su.IsMainAccount FROM SupplierUser su JOIN [User] u ON u.UserID = su.UserID\" -C)",
+      "Bash(taskkill *)",
+      "Bash(cmd.exe *)",
+      "Bash(dir /b \"D:\\\\SRM\\\\backend\\\\Migrations\\\\*.cs\")"
     ]
   }
 }

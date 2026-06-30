@@ -23,6 +23,7 @@ namespace backend.Models
         public DbSet<ReceiveDetail> ReceiveDetails { get; set; }
         public DbSet<Inventory> Inventories { get; set; }
         public DbSet<SupplierUser> SupplierUsers { get; set; }
+        public DbSet<LoginLog> LoginLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -225,6 +226,25 @@ namespace backend.Models
                       .WithMany(u => u.UpdatedInventories)
                       .HasForeignKey(e => e.UpdateByID)
                       .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // =====================================
+            // LoginLog 配置
+            // =====================================
+            modelBuilder.Entity<LoginLog>(entity =>
+            {
+                entity.ToTable("LoginLog");
+                entity.HasKey(e => e.LoginLogID);
+
+                entity.Property(e => e.UserID)
+                      .HasColumnType("varchar(50)");
+
+                entity.HasOne(e => e.User)
+                      .WithMany()
+                      .HasForeignKey(e => e.UserID)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => e.LoginTime);
             });
         }
     }

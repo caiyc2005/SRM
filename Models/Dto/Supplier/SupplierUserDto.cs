@@ -24,4 +24,10 @@ namespace backend.Models.Dto.Supplier
         public DateTime CreatedAt { get; set; }
         public string? Memo { get; set; }
     }
+
+
+    public class GetSupplierChoosedID
+    {
+        public string supplierID { get; set; }
+    }
 }

@@ -127,6 +127,19 @@ namespace backend.Controllers
                 }
             }
 
+            // ========== 记录登录日志 ==========
+            var loginLog = new LoginLog
+            {
+                LoginLogID = Guid.NewGuid().ToString(),
+                UserID = user.UserID,
+                UserCode = user.UserCode,
+                UserName = user.UserName,
+                LoginTime = DateTime.Now,
+                IPAddress = HttpContext.Connection.RemoteIpAddress?.ToString()
+            };
+            _context.LoginLogs.Add(loginLog);
+            await _context.SaveChangesAsync();
+
             // 返回
             return Ok(new LoginResponse
             {
