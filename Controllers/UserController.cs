@@ -369,7 +369,7 @@ namespace backend.Controllers
 
             // 验证原密码
             if (!_passwordService.VerifyPassword(user.Password, request.OldPassword))
-                return BadRequest(ApiResult.Fail("原密码不正确"));
+                return Ok(ApiResult.Fail("原密码不正确"));
 
             // 设置新密码
             user.Password = _passwordService.HashPassword(request.NewPassword);
