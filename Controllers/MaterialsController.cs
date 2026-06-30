@@ -8,7 +8,7 @@ namespace backend.Controllers
 {
     [Route("[controller]/[action]")]
     [ApiController]
-    [Authorize(Roles = "admin")]
+    [Authorize(Roles = "admin,purchase")]
     public class MaterialsController : ControllerBase
     {
         private readonly AppDbContext _context;

@@ -241,6 +241,7 @@ namespace backend.Controllers
 
 
         [HttpGet]
+        [AllowAnonymous]
         public async Task<ActionResult<ApiResult>> GetRoles()
         {
             var roles = await _context.Roles
