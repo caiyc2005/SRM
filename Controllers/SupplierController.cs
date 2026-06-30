@@ -319,11 +319,45 @@ namespace backend.Controllers
             if (string.IsNullOrWhiteSpace(currentUserId))
                 return BadRequest(ApiResult.Fail("无法获取当前用户信息"));
 
+            // 检查当前用户是否为 admin 角色
+            bool isAdmin = await _context.UserRoles
+                .Where(ur => ur.UserID == currentUserId)
+                .Join(_context.Roles.Where(r => r.RoleName == "admin"),
+                    ur => ur.RoleID,
+                    r => r.RoleID,
+                    (ur, r) => ur)
+                .AnyAsync();
+
             var currentSupplierUser = await _context.SupplierUsers
                 .FirstOrDefaultAsync(su => su.UserID == currentUserId);
 
             if (currentSupplierUser == null)
+            {
+                if (isAdmin)
+                {
+                    // admin 角色可以查看所有供应商的用户列表
+                    var allUsers = await _context.SupplierUsers
+                        .Join(_context.Users,
+                            su => su.UserID,
+                            u => u.UserID,
+                            (su, u) => new SupplierUserItemDto
+                            {
+                                SupplierUserID = su.SupplierUserID,
+                                UserID = su.UserID,
+                                UserCode = u.UserCode,
+                                UserName = u.UserName,
+                                IsMainAccount = su.IsMainAccount,
+                                CreatedAt = su.CreatedAt,
+                                Memo = u.Memo
+                            })
+                        .OrderByDescending(u => u.IsMainAccount)
+                        .ThenBy(u => u.CreatedAt)
+                        .ToListAsync();
+
+                    return Ok(ApiResult.Ok("查询成功", allUsers));
+                }
                 return BadRequest(ApiResult.Fail("当前用户不是供应商用户"));
+            }
 
             if (!currentSupplierUser.IsMainAccount)
                 return BadRequest(ApiResult.Fail("仅主账号可查询子账号列表"));
