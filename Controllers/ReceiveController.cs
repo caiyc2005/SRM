@@ -79,7 +79,7 @@ namespace backend.Controllers
             int sequence = 1;
             if (todayMaxCode != null)
             {
-                var lastNumStr = todayMaxCode.ReceiveCode.Substring(8);
+                var lastNumStr = todayMaxCode.ReceiveCode.Substring(10);
                 if (int.TryParse(lastNumStr, out int lastNum))
                 {
                     sequence = lastNum + 1;
