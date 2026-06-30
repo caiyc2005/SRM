@@ -114,9 +114,10 @@ namespace backend.Controllers
                 roles: roleNames
             );
             // ========== 如果是供应商角色，查 SupplierID 和 IsMainAccount ==========
+            // 如果同时有 admin 角色，优先以 admin 身份登录，不读取供应商信息
             string? supplierID = null;
             var isMainAccount = false;
-            if (roleNames.Contains("supplier"))
+            if (roleNames.Contains("supplier") && !roleNames.Contains("admin"))
             {
                 var supplierUser = await _context.SupplierUsers
                     .FirstOrDefaultAsync(su => su.UserID == user.UserID);
