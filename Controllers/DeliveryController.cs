@@ -68,7 +68,7 @@ namespace backend.Controllers
             if (distinctSupplierIDs.Count > 1)
                 return BadRequest(new { code = 400, message = "不能同时为不同供应商的订单创建送货单" });
 
-            // ========== 校验：各采购订单状态 ==========
+            // ========== 校验：采购订单未被删除 + 所选明细必须已确认 ==========
             var orders = orderDetails
                 .Select(od => od.PurchaseOrder)
                 .DistinctBy(o => o.OrderID)
@@ -78,9 +78,14 @@ namespace backend.Controllers
             {
                 if (order.IsDel)
                     return BadRequest(new { code = 400, message = $"采购订单({order.OrderCode})已被删除" });
+            }
 
-                if (order.Status != 1 && order.Status != 2)
-                    return BadRequest(new { code = 400, message = $"采购订单({order.OrderCode})状态不允许生成送货单" });
+            // 校验：所选订单明细必须已确认（IsConfirm >= 1）
+            var unconfirmedDetails = orderDetails.Where(od => od.IsConfirm < 1).ToList();
+            if (unconfirmedDetails.Any())
+            {
+                var codes = unconfirmedDetails.Select(od => od.PurchaseOrder.OrderCode).Distinct();
+                return BadRequest(new { code = 400, message = $"所选订单明细中存在未确认的明细，所属订单号：{string.Join(", ", codes)}" });
             }
 
             // ========== 供应商权限校验 ==========
